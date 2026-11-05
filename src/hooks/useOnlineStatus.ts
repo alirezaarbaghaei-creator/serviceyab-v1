@@ -17,7 +17,7 @@ export function useOnlineStatus(): boolean {
       })
         .then((h) => { nativeHandler = h; })
         .catch((error: unknown) => {
-          console.error('[Kateb] network listener unavailable', error);
+          console.error('[ServiceYab] network listener unavailable', error);
         });
 
       Network.getStatus()
@@ -25,10 +25,10 @@ export function useOnlineStatus(): boolean {
           if (!cancelled) setOnline(status.connected);
         })
         .catch((error: unknown) => {
-          console.error('[Kateb] network status unavailable', error);
+          console.error('[ServiceYab] network status unavailable', error);
         });
     } catch (error) {
-      console.error('[Kateb] network initialization failed', error);
+      console.error('[ServiceYab] network initialization failed', error);
     }
 
     // Web fallback — navigator events

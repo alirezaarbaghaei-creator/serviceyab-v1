@@ -5,7 +5,7 @@
 
 function isStorageAvailable(): boolean {
   try {
-    const test = '__kateb_test__';
+    const test = '__serviceyab_test__';
     localStorage.setItem(test, test);
     localStorage.removeItem(test);
     return true;

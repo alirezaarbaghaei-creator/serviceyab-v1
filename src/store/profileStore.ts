@@ -1,82 +1,40 @@
 import { create } from 'zustand';
-import type { Profile } from '@/types';
-import {
-  fetchProfiles,
-  createProfile as svcCreate,
-  updateProfile as svcUpdate,
-  deleteProfile as svcDelete,
-  setDefaultProfile as svcSetDefault,
-} from '@/services/profilesService';
+import { fetchProfileApi, saveProfileApi, type ApplicantProfile } from '@/lib/api';
 
 interface ProfileState {
-  profiles: Profile[];
+  profile: ApplicantProfile | null;
   loading: boolean;
-  loadProfiles: () => Promise<void>;
-  addProfile: (p: Omit<Profile, 'id' | 'createdAt'>) => Promise<void>;
-  updateProfile: (id: string, p: Partial<Profile>) => Promise<void>;
-  deleteProfile: (id: string) => Promise<void>;
-  setDefault: (id: string) => Promise<void>;
-  getDefault: () => Profile | undefined;
+  saving: boolean;
+  loadProfile: () => Promise<void>;
+  saveProfile: (fields: Partial<ApplicantProfile>) => Promise<boolean>;
 }
 
 export const useProfileStore = create<ProfileState>((set, get) => ({
-  profiles: [],
+  profile: null,
   loading: false,
-
-  loadProfiles: async () => {
+  saving: false,
+  loadProfile: async () => {
     set({ loading: true });
-    const profiles = await fetchProfiles();
-    set({ profiles, loading: false });
+    try {
+      const profile = await fetchProfileApi();
+      set({ profile, loading: false });
+    } catch {
+      set({ loading: false });
+    }
   },
-
-  addProfile: async (p) => {
-    const created = await svcCreate(p);
-    if (created) {
-      set((s) => {
-        let profiles = [...s.profiles, created];
-        if (created.isDefault) {
-          profiles = profiles.map((x) => (x.id === created.id ? x : { ...x, isDefault: false }));
-        }
-        return { profiles };
+  saveProfile: async (fields) => {
+    set({ saving: true });
+    try {
+      const { profile_complete } = await saveProfileApi(fields);
+      const current = get().profile;
+      set({
+        profile: current ? { ...current, ...fields, profile_complete } : null,
+        saving: false,
       });
+      return profile_complete;
+    } catch (err) {
+      set({ saving: false });
+      throw err;
     }
   },
-
-  updateProfile: async (id, p) => {
-    const ok = await svcUpdate(id, p);
-    if (ok) {
-      set((s) => {
-        let profiles = s.profiles.map((x) => (x.id === id ? { ...x, ...p } : x));
-        if (p.isDefault) {
-          profiles = profiles.map((x) => (x.id === id ? x : { ...x, isDefault: false }));
-        }
-        return { profiles };
-      });
-    }
-  },
-
-  deleteProfile: async (id) => {
-    const ok = await svcDelete(id);
-    if (ok) {
-      set((s) => {
-        const profiles = s.profiles.filter((x) => x.id !== id);
-        if (profiles.length && !profiles.some((x) => x.isDefault)) {
-          profiles[0].isDefault = true;
-        }
-        return { profiles };
-      });
-    }
-  },
-
-  setDefault: async (id) => {
-    const allIds = get().profiles.map((p) => p.id);
-    const ok = await svcSetDefault(id, allIds);
-    if (ok) {
-      set((s) => ({
-        profiles: s.profiles.map((x) => ({ ...x, isDefault: x.id === id })),
-      }));
-    }
-  },
-
-  getDefault: () => get().profiles.find((x) => x.isDefault),
 }));

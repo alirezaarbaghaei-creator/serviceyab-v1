@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.kateb.app',
-  appName: 'Kateb',
+  appName: 'ServiceYab',
   webDir: 'dist',
   android: {
     allowMixedContent: false,

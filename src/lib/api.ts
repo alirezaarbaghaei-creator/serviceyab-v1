@@ -1,12 +1,12 @@
 /**
- * Kateb API client — calls a PHP JSON API endpoint.
+ * ServiceYab (سرویس‌یاب) API client — calls a PHP JSON API endpoint.
  * The base URL is configurable from the admin panel and stored in localStorage.
  */
 
 import { getItem, setItem, removeItem } from './safeStorage';
 
-const DEFAULT_API_URL = 'https://app.kateb.site/api/index.php';
-const STORAGE_KEY = 'kateb_api_url';
+const DEFAULT_API_URL = import.meta.env.VITE_API_URL || '';
+const STORAGE_KEY = 'serviceyab_api_url';
 
 function getApiUrl(): string {
   return getItem(STORAGE_KEY) || DEFAULT_API_URL;
@@ -22,12 +22,12 @@ export function getStoredApiUrl(): string {
 }
 
 function getToken(): string | null {
-  return getItem('kateb_token');
+  return getItem('serviceyab_token');
 }
 
 function setToken(token: string | null) {
-  if (token) setItem('kateb_token', token);
-  else removeItem('kateb_token');
+  if (token) setItem('serviceyab_token', token);
+  else removeItem('serviceyab_token');
 }
 
 export class OfflineError extends Error {
@@ -126,308 +126,298 @@ export function isAuthed(): boolean {
   return !!getToken();
 }
 
-// ─── Profiles ─────────────────────────────────────────────────
-export async function fetchProfilesApi() {
-  return apiCall('profiles_list').then((d) => d.data ?? []);
-}
-export async function createProfileApi(p: Record<string, unknown>) {
-  return apiCall('profiles_create', p).then((d) => d.data);
-}
-export async function updateProfileApi(id: string, patch: Record<string, unknown>) {
-  return apiCall('profiles_update', { id, ...patch });
-}
-export async function deleteProfileApi(id: string) {
-  return apiCall('profiles_delete', { id });
-}
-
-// ─── Letters ──────────────────────────────────────────────────
-export async function fetchLettersApi() {
-  return apiCall('letters_list').then((d) => d.data ?? []);
-}
-export async function createLetterApi(l: Record<string, unknown>) {
-  return apiCall('letters_create', l).then((d) => d.data);
-}
-export async function updateLetterApi(id: string, patch: Record<string, unknown>) {
-  return apiCall('letters_update', { id, ...patch });
-}
-export async function deleteLetterApi(id: string) {
-  return apiCall('letters_delete', { id });
-}
-export async function rateLetterApi(id: string, rating: number) {
-  return apiCall('letters_rate', { id, rating }).then((d) => d);
-}
-
-// ─── Drafts ───────────────────────────────────────────────────
-export async function fetchDraftsApi() {
-  return apiCall('drafts_list').then((d) => d.data ?? []);
-}
-export async function saveDraftApi(d: Record<string, unknown>) {
-  return apiCall('drafts_save', d).then((r) => r.data);
-}
-export async function deleteDraftApi(id: string) {
-  return apiCall('drafts_delete', { id });
-}
-
-// ─── Templates ───────────────────────────────────────────────
-export async function fetchTemplatesApi(search?: string, includePending?: boolean) {
-  return apiCall('templates_list', { search: search ?? '', include_pending: includePending ?? false }).then((d) => ({ data: d.data ?? [], total: d.total ?? 0 }));
-}
-export async function createTemplateApi(t: Record<string, unknown>) {
-  return apiCall('templates_create', t).then((d) => d.data);
-}
-export async function rateTemplateApi(templateId: string, rating: number) {
-  return apiCall('templates_rate', { template_id: templateId, rating }).then((d) => d.data);
-}
-export async function updateTemplateRatingApi(templateId: string, rating: number) {
-  return apiCall('templates_update_rating', { template_id: templateId, rating }).then((d) => d.data);
-}
-export async function deleteTemplateApi(id: string) {
-  return apiCall('templates_delete', { id });
-}
-
-// ─── Admin Templates ───────────────────────────────────────────
-export interface AdminTemplateRow {
+// ─── Applicant profile (ماده ۵-۴) ─────────────────────────────
+export interface ApplicantProfile {
   id: string;
+  user_id: string;
+  city: string;
+  contact_extra: string;
+  education_field: string;
+  education_degree: string;
+  education_center: string;
+  courses: string;
+  skill_areas: string;
+  skill_level: string;
+  experience: string;
+  tools: string;
+  description: string;
+  profile_complete: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export async function fetchProfileApi(): Promise<ApplicantProfile> {
+  const d = await apiCall('profile_get');
+  return { ...d.data, profile_complete: !!(d.data?.profile_complete) } as ApplicantProfile;
+}
+
+export async function saveProfileApi(fields: Partial<ApplicantProfile>): Promise<{ profile_complete: boolean }> {
+  const d = await apiCall('profile_save', fields as Record<string, unknown>);
+  return { profile_complete: !!d.profile_complete };
+}
+
+// ─── Exam (ماده ۷) ────────────────────────────────────────────
+export interface ExamInfo {
   title: string;
-  raw_request: string;
-  creator_name: string;
-  is_approved: boolean;
-  sample_content: string;
-  letter_type: Record<string, unknown>;
-  created_at: string;
-  rating: number;
-  rating_count: number;
+  duration_minutes: number;
+  question_count: number;
+  is_active: boolean;
+  require_profile_complete: boolean;
+  show_result_to_user: boolean;
+  pass_score_percent: number;
+  max_attempts: number;
 }
 
-export async function adminTemplatesListApi(): Promise<{ data: AdminTemplateRow[]; total: number }> {
-  return apiCall('admin_templates_list').then((d) => ({ data: (d.data ?? []) as AdminTemplateRow[], total: d.total ?? 0 }));
-}
-export async function adminTemplateApproveApi(id: string): Promise<void> {
-  await apiCall('admin_template_approve', { id });
-}
-export async function adminTemplateRejectApi(id: string): Promise<void> {
-  await apiCall('admin_template_reject', { id });
-}
-
-// ─── Coins ─────────────────────────────────────────────────────
-export async function coinsBalanceApi(): Promise<number> {
-  return apiCall('coins_balance').then((d) => d.coins ?? 0);
-}
-export async function coinsDeductApi(amount: number, reason: string): Promise<{ coins: number } | null> {
-  try {
-    const d = await apiCall('coins_deduct', { amount, reason });
-    return { coins: d.coins ?? 0 };
-  } catch {
-    return null;
-  }
+export interface ExamStatus {
+  exam: ExamInfo;
+  profile_complete: boolean;
+  used_attempts: number;
+  remaining_attempts: number;
+  available_questions: number;
+  active_attempt: { id: string; expires_at: string; started_at: string } | null;
 }
 
-// ─── Discovery Usage ──────────────────────────────────────────
-export async function getDiscoveryCountApi() {
-  return apiCall('discovery_count').then((d) => d.count ?? 0);
-}
-export async function recordDiscoveryApi(queryText: string) {
-  return apiCall('discovery_record', { query_text: queryText });
-}
-
-// ─── Plan Usage ──────────────────────────────────────────────
-export async function incrementAiUsageApi(): Promise<number> {
-  return apiCall('increment_ai_usage').then((d) => d.ai_assistant_usage_this_month ?? 0);
-}
-export async function incrementTemplateUsageApi(): Promise<number> {
-  return apiCall('increment_template_usage').then((d) => d.template_usage_this_month ?? 0);
-}
-export async function usageGetApi(): Promise<{ plan_type: string; ai_assistant_usage_this_month: number; template_usage_this_month: number; expires_at: string | null; cycle_start: string | null }> {
-  return apiCall('usage_get').then((d) => d);
+export interface ExamQuestion {
+  id: string;
+  index: number;
+  text: string;
+  option1: string;
+  option2: string;
+  option3: string;
+  option4: string;
 }
 
-// ─── Admin ────────────────────────────────────────────────────
+export interface ExamState {
+  attempt_id: string;
+  status: 'in_progress' | 'completed' | 'expired';
+  expires_at: string;
+  started_at: string;
+  questions: ExamQuestion[];
+  answers: Record<string, number>;
+}
+
+export interface ExamResult {
+  attempt_id: string;
+  status: string;
+  started_at: string;
+  finished_at: string | null;
+  total?: number;
+  score?: number;
+  passed?: boolean;
+  show_result?: boolean;
+}
+
+export async function examStatusApi(): Promise<ExamStatus> {
+  const d = await apiCall('exam_status');
+  return d.data as ExamStatus;
+}
+
+export async function examStartApi(): Promise<{ attempt_id: string; expires_at: string; resumed: boolean }> {
+  const d = await apiCall('exam_start');
+  return d.data;
+}
+
+export async function examStateApi(attemptId: string): Promise<ExamState> {
+  const d = await apiCall('exam_state', { attempt_id: attemptId });
+  return d.data as ExamState;
+}
+
+export async function examSaveProgressApi(attemptId: string, questionId: string, selectedOption: number): Promise<void> {
+  await apiCall('exam_save_progress', { attempt_id: attemptId, question_id: questionId, selected_option: selectedOption });
+}
+
+export async function examSubmitApi(attemptId: string): Promise<{ status: string; score?: number; total?: number; percent?: number; passed?: boolean; already?: boolean }> {
+  const d = await apiCall('exam_submit', { attempt_id: attemptId });
+  return d.data;
+}
+
+export async function examResultApi(attemptId: string): Promise<ExamResult> {
+  const d = await apiCall('exam_result', { attempt_id: attemptId });
+  return d.data as ExamResult;
+}
+
+// ─── Admin (ماده ۸) ───────────────────────────────────────────
 export interface AppUser {
   id: string;
   phone: string;
   full_name: string;
   is_admin?: boolean;
-  coins?: number;
-  plan_type?: string;
-  credits_remaining?: number;
-  ai_assistant_usage_this_month?: number;
-  template_usage_this_month?: number;
+  status?: 'new' | 'in_review' | 'approved' | 'rejected';
+  created_at?: string;
 }
 
-export interface AdminUserRow {
+export interface AdminStats {
+  total_applicants: number;
+  new_applicants: number;
+  in_review: number;
+  approved: number;
+  rejected: number;
+  exam_participants: number;
+}
+
+export interface AdminApplicantRow {
   id: string;
   phone: string;
   full_name: string;
-  is_admin: boolean;
-  coins: number;
-  plan_type?: string;
+  status: 'new' | 'in_review' | 'approved' | 'rejected';
   created_at: string;
+  city: string;
+  profile_complete: boolean;
+  attempt_id: string | null;
+  attempt_status: string | null;
+  attempt_score: number | null;
+  attempt_total: number | null;
+  attempt_passed: boolean | null;
 }
 
+export async function adminStatsGet(): Promise<AdminStats> {
+  const d = await apiCall('admin_stats');
+  return d.data as AdminStats;
+}
+
+export async function adminApplicantsListApi(params: {
+  search?: string;
+  status?: string;
+  city?: string;
+  exam_status?: '' | 'none' | 'completed';
+}): Promise<AdminApplicantRow[]> {
+  const d = await apiCall('admin_applicants_list', params as Record<string, unknown>);
+  return d.data ?? [];
+}
+
+export async function adminApplicantGetApi(id: string): Promise<{
+  applicant: { id: string; phone: string; full_name: string; status: string; created_at: string };
+  profile: Partial<ApplicantProfile> | null;
+  attempts: Array<{
+    id: string;
+    status: string;
+    started_at: string;
+    finished_at: string | null;
+    score: number;
+    total: number;
+    passed: boolean;
+    answers: Array<{
+      question_id: string;
+      selected_option: number;
+      is_correct: number;
+      text?: string;
+      option1?: string;
+      option2?: string;
+      option3?: string;
+      option4?: string;
+      correct_option?: number;
+    }>;
+  }>;
+}> {
+  const d = await apiCall('admin_applicant_get', { id });
+  return d.data;
+}
+
+export async function adminApplicantSetStatusApi(id: string, status: string): Promise<void> {
+  await apiCall('admin_applicant_set_status', { id, status });
+}
+
+export async function adminApplicantsExportApi(): Promise<string> {
+  const d = await apiCall('admin_applicants_export');
+  return (d.data as string) ?? '';
+}
+
+// ─── Admin: questions ─────────────────────────────────────────
+export interface AdminQuestion {
+  id: string;
+  text: string;
+  option1: string;
+  option2: string;
+  option3: string;
+  option4: string;
+  correct_option: number;
+  is_active: boolean;
+  created_at?: string;
+}
+
+export async function adminQuestionsListApi(search?: string): Promise<AdminQuestion[]> {
+  const d = await apiCall('admin_questions_list', { search: search ?? '' });
+  return (d.data ?? []) as AdminQuestion[];
+}
+
+export async function adminQuestionCreateApi(q: Omit<AdminQuestion, 'id' | 'created_at'>): Promise<string> {
+  const d = await apiCall('admin_questions_create', q as unknown as Record<string, unknown>);
+  return d.data.id;
+}
+
+export async function adminQuestionUpdateApi(q: AdminQuestion): Promise<void> {
+  await apiCall('admin_questions_update', q as unknown as Record<string, unknown>);
+}
+
+export async function adminQuestionToggleApi(id: string, isActive: boolean): Promise<void> {
+  await apiCall('admin_questions_toggle', { id, is_active: isActive });
+}
+
+export async function adminQuestionDeleteApi(id: string): Promise<void> {
+  await apiCall('admin_questions_delete', { id });
+}
+
+// ─── Admin: exam settings ─────────────────────────────────────
+export interface AdminExamSettings {
+  title: string;
+  duration_minutes: number;
+  question_count: number;
+  pass_score_percent: number;
+  max_attempts: number;
+  show_result_to_user: boolean;
+  require_profile_complete: boolean;
+  is_active: boolean;
+}
+
+export async function adminExamGetApi(): Promise<AdminExamSettings> {
+  const d = await apiCall('admin_exam_get');
+  return {
+    ...d.data,
+    show_result_to_user: !!(d.data.show_result_to_user),
+    require_profile_complete: !!(d.data.require_profile_complete),
+    is_active: !!(d.data.is_active),
+  } as AdminExamSettings;
+}
+
+export async function adminExamSaveApi(s: AdminExamSettings): Promise<void> {
+  await apiCall('admin_exam_save', s as unknown as Record<string, unknown>);
+}
+
+// ─── Admin: settings (SMS + exam instructions) ────────────────
 export interface AdminSettings {
   sms_api_key: string;
   sms_pattern_code: string;
   sms_line_number: string;
-  ai_api_url: string;
-  ai_api_key: string;
-  ai_models: string;
-  zarinpal_merchant_id: string;
-  zarinpal_sandbox: boolean;
-  bazaar_client_id: string;
-  bazaar_client_secret: string;
-  bazaar_refresh_token: string;
-}
-
-export interface AdminStats {
-  users: number;
-  letters: number;
-  drafts: number;
-  templates: number;
-  discovery: number;
-}
-
-export async function adminUsersList(): Promise<AdminUserRow[]> {
-  return apiCall('admin_users_list').then((d) => d.data ?? []);
-}
-
-export async function adminUserCreate(p: {
-  phone: string; password: string; full_name?: string; is_admin?: boolean;
-}): Promise<string | null> {
-  const d = await apiCall('admin_user_create', p);
-  return d.data?.id ?? null;
-}
-
-export async function adminUserUpdate(id: string, patch: {
-  full_name?: string; is_admin?: boolean; password?: string;
-}): Promise<void> {
-  await apiCall('admin_user_update', { id, ...patch });
-}
-
-export async function adminUserDelete(id: string): Promise<void> {
-  await apiCall('admin_user_delete', { id });
+  exam_instructions: string;
 }
 
 export async function adminSettingsGet(): Promise<AdminSettings | null> {
-  return apiCall('admin_settings_get').then((d) => d.data ?? null);
+  const d = await apiCall('admin_settings_get');
+  return d.data ?? null;
 }
 
 export async function adminSettingsUpdate(patch: Partial<AdminSettings>): Promise<void> {
   await apiCall('admin_settings_update', patch);
 }
 
-export async function aiTestApi(): Promise<{ success: boolean; message: string; response?: string }> {
-  try {
-    const data = await apiCall('ai_test');
-    return { success: !!data.success, message: data.message ?? 'پاسخی دریافت نشد', response: data.response };
-  } catch (err) {
-    return { success: false, message: err instanceof Error ? err.message : 'خطا در اتصال' };
-  }
+// ─── Admin: admin accounts (بند ۸-۱) ──────────────────────────
+export async function adminUserCreate(p: {
+  phone: string;
+  password: string;
+  full_name: string;
+  is_admin?: boolean;
+}): Promise<string | null> {
+  const d = await apiCall('admin_user_create', p);
+  return d.data?.id ?? null;
 }
 
-export async function adminStatsGet(): Promise<AdminStats> {
-  return apiCall('admin_stats').then((d) => d.data ?? { users: 0, letters: 0, drafts: 0, templates: 0, discovery: 0 });
+export async function adminUserUpdate(id: string, patch: {
+  full_name?: string;
+  password?: string;
+}): Promise<void> {
+  await apiCall('admin_user_update', { id, ...patch });
 }
 
-export async function adminUserSetCoins(id: string, coins: number): Promise<void> {
-  await apiCall('admin_user_set_coins', { id, coins });
-}
-
-export async function adminUserAddCoins(id: string, amount: number): Promise<void> {
-  await apiCall('admin_user_add_coins', { id, amount });
-}
-
-export async function adminUserSetPlan(id: string, planId: string): Promise<void> {
-  await apiCall('admin_user_set_plan', { id, plan_id: planId });
-}
-
-// ─── Zarinpal Payments ─────────────────────────────────────────
-export interface CoinPackage {
-  id: string;
-  coins: number;
-  price: number;
-  label: string;
-  popular?: boolean;
-}
-
-const ZARINPAL_CALLBACK_URL =
-  import.meta.env.VITE_ZARINPAL_CALLBACK_URL ||
-  'https://app.kateb.site/payment/callback';
-
-export async function coinPackagesApi(): Promise<CoinPackage[]> {
-  return apiCall('coin_packages').then((d) => d.data ?? []);
-}
-
-export async function zarinpalRequestApi(packageId: string): Promise<{ redirect_url: string; authority: string; order_id: string }> {
-  const d = await apiCall('zarinpal_request', { package_id: packageId, callback_url: ZARINPAL_CALLBACK_URL });
-  if (!d.data) throw new Error('پاسخ درگاه پرداخت نامعتبر است');
-  return d.data;
-}
-
-export async function zarinpalVerifyApi(authority: string, status: string): Promise<{ success: boolean; coins?: number; added?: number; ref_id?: string; already_paid?: boolean } | null> {
-  try {
-    const d = await apiCall('zarinpal_verify', { authority, status });
-    return d;
-  } catch {
-    return null;
-  }
-}
-
-export async function paymentCallbackApi(authority: string, status: string): Promise<{ success: boolean; status: string; order_id?: string; coins?: number; added?: number; ref_id?: string; already_paid?: boolean; message?: string } | null> {
-  try {
-    const d = await apiCall('payment_callback', { authority, status });
-    return d;
-  } catch {
-    return null;
-  }
-}
-
-export async function paymentStatusApi(orderId: string): Promise<{ success: boolean; status: string; order_id: string; coins: number; ref_id: string } | null> {
-  try {
-    const d = await apiCall('payment_status', { order_id: orderId });
-    return d;
-  } catch {
-    return null;
-  }
-}
-
-export async function coinOrdersListApi(): Promise<any[]> {
-  return apiCall('coin_orders_list').then((d) => d.data ?? []);
-}
-
-// ─── Plan Purchase via Zarinpal ───────────────────────────────
-export async function planPurchaseRequestApi(planId: string, durationMonths: number = 1): Promise<{ redirect_url: string; authority: string; order_id: string }> {
-  const d = await apiCall('plan_request', { plan_id: planId, duration_months: durationMonths, callback_url: ZARINPAL_CALLBACK_URL });
-  if (!d.data) throw new Error('پاسخ درگاه پرداخت نامعتبر است');
-  return d.data;
-}
-
-// ─── Plan Transactions (user-facing) ──────────────────────────
-export async function planTransactionsListApi(): Promise<any[]> {
-  return apiCall('plan_transactions_list').then((d) => d.data ?? []);
-}
-
-// ─── Cafe Bazaar Purchase Verification ────────────────────────
-export interface BazaarVerifyResult {
-  success: boolean;
-  plan_id?: string;
-  duration_months?: number;
-  expires_at?: string;
-  already_processed?: boolean;
-  message?: string;
-}
-
-export async function bazaarPurchaseVerifyApi(
-  productId: string,
-  purchaseToken: string,
-): Promise<BazaarVerifyResult> {
- const d = await apiCall('bazaar_purchase_verify', { product_id: productId, purchase_token: purchaseToken });
-  return { success: !!d.success, ...d.data };
-}
-
-// ─── Admin Subscriptions & Transactions ───────────────────────
-export async function adminSubsListApi(): Promise<any[]> {
-  return apiCall('admin_subs_list').then((d) => d.data ?? []);
-}
-export async function adminTransactionsListApi(): Promise<any[]> {
-  return apiCall('admin_transactions_list').then((d) => d.data ?? []);
+export async function adminUserDelete(id: string): Promise<void> {
+  await apiCall('admin_user_delete', { id });
 }

@@ -35,7 +35,7 @@ export async function checkNetworkConnection(): Promise<boolean> {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
-    const res = await fetch('https://app.kateb.site/api/index.php', {
+    const res = await fetch('/', {
       method: 'HEAD',
       signal: controller.signal,
       cache: 'no-store',

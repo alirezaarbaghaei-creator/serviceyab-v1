@@ -1,5 +1,5 @@
 /**
- * In-app diagnostics for the CafeBazaar purchase flow.
+ * In-app diagnostics for runtime error reporting.
  *
  * WHY THIS EXISTS: the checkout can fail on a real device where neither
  * `adb logcat` nor Chrome remote debugging is available to the person testing.
@@ -7,15 +7,11 @@
  * localStorage so it survives a crash or a restart, and renders it in a panel
  * that can be copied with one tap.
  *
- * It captures three sources:
- *   1. console.* / window.onerror / unhandledrejection  (web layer)
- *   2. explicit diag.* calls placed on the billing code path
- *   3. the native plugin's own ring buffer + device/Bazaar state, read through
- *      the CafeBazaarBilling.getDiagnostics() method
+ * It captures console.* / window.onerror / unhandledrejection (web layer)
+ * plus explicit diag.* calls placed on runtime code paths.
  */
 
 import { isNativeApp } from '@/lib/capacitor';
-import { ensureBazaarPlugin, getBazaarPluginSync } from './bazaarPlugin';
 
 export type DiagLevel = 'log' | 'info' | 'warn' | 'error';
 
@@ -29,7 +25,7 @@ export interface DiagEntry {
 /** Bump this on every diagnostic build so the tester can confirm what is installed. */
 export const DIAG_BUILD = '1.5.0 (release)';
 
-const STORAGE_KEY = 'kateb_diag_logs';
+const STORAGE_KEY = 'serviceyab_diag_logs';
 const MAX_ENTRIES = 500;
 
 let entries: DiagEntry[] = [];
@@ -222,8 +218,8 @@ export function buildBaseReport(): string {
   add(`origin       : ${window.location.origin}`);
   add(`href         : ${window.location.href}`);
   add(`userAgent    : ${navigator.userAgent}`);
-  add(`apiUrl       : ${safeGet('kateb_api_url') || '(default app.kateb.site)'}`);
-  add(`hasToken     : ${safeGet('kateb_token') ? 'yes' : 'no'}`);
+  add(`apiUrl       : ${safeGet('serviceyab_api_url')}`);
+  add(`hasToken     : ${safeGet('serviceyab_token') ? 'yes' : 'no'}`);
 
   const cap = (window as any).Capacitor;
   add(`capacitor    : ${cap ? `present, platform=${cap.getPlatform ? cap.getPlatform() : '?'}` : 'ABSENT'}`);
@@ -271,37 +267,15 @@ function withNativeTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
  * itself: the raw Capacitor proxy is a thenable, so returning it from an async
  * function made the promise machinery call `proxy.then()` and fail with
  * "CafeBazaarBilling.then() is not implemented on android". The caller fetches the
- * wrapper synchronously with getBazaarPluginSync() instead.
+ * wrapper synchronously with null instead.
  */
 async function ensurePluginForReport(add: (s?: string) => void): Promise<boolean> {
   if (!isNativeApp()) {
     add('native plugin: not a native build - not applicable');
     return false;
   }
-  try {
-    const registered = await withNativeTimeout(ensureBazaarPlugin(), 'ensureBazaarPlugin');
-    if (!registered) {
-      add('native plugin: registration failed - see the JS log above');
-      return false;
-    }
-    return true;
-  } catch (e) {
-    add(`native plugin: registration FAILED - ${stringify(e)}`);
-    return false;
-  }
-}
-
-async function callNative<T>(
-  plugin: any,
-  method: string,
-  add: (s?: string) => void,
-): Promise<T | null> {
-  try {
-    return (await withNativeTimeout(plugin[method](), method)) as T;
-  } catch (e) {
-    add(`${method}: FAILED - ${stringify(e)}`);
-    return null;
-  }
+  add('native plugin: bazaar billing diagnostics removed in serviceyab');
+  return false;
 }
 
 /**
@@ -314,60 +288,6 @@ export async function collectReport(onPartial?: (text: string) => void): Promise
   const add = (s = '') => lines.push(s);
 
   onPartial?.(lines.join('\n'));
-
-  add('');
-  add('=== NATIVE PLUGIN STATE ===');
-  const ready = await ensurePluginForReport(add);
-  const plugin = ready ? getBazaarPluginSync() : null;
-  if (ready && !plugin) add('native plugin: wrapper missing after successful registration');
-
-  let d: any = null;
-  if (plugin) {
-    d = await callNative<any>(plugin, 'getDiagnostics', add);
-    if (d) {
-      const put = (k: string, v: unknown) => add(`${k.padEnd(26)}: ${stringify(v)}`);
-      put('pluginRegistered', d.pluginRegistered);
-      put('appPackage', d.appPackage);
-      put('androidSdk', d.androidSdk);
-      put('androidRelease', d.androidRelease);
-      put('deviceModel', d.deviceModel);
-      put('bazaarInstalled', d.bazaarInstalled);
-      put('bazaarVersionName', d.bazaarVersionName);
-      put('bazaarVersionCode', d.bazaarVersionCode);
-      put('billingServiceResolvable', d.billingServiceResolvable);
-      put('payThroughBazaarGranted', d.payThroughBazaarGranted);
-      put('isBound', d.isBound);
-      put('isConnecting', d.isConnecting);
-      put('subscriptionsSupported', d.subscriptionsSupported);
-      put('apiVersion', d.apiVersion);
-      put('itemType', d.itemType);
-    } else {
-      add('getDiagnostics returned nothing - see the error line above');
-    }
-
-    add('');
-    add('--- live isAvailable() probe ---');
-    const probe = await callNative<any>(plugin, 'isAvailable', add);
-    add(`result: ${stringify(probe)}`);
-  }
-
-  add('');
-  add('=== NATIVE LOG (plugin ring buffer) ===');
-  if (d) {
-    const raw = d.nativeLogs;
-    const nativeLogs: string[] = Array.isArray(raw)
-      ? raw
-      : typeof raw === 'string' && raw
-        ? raw.split('\n')
-        : [];
-    if (nativeLogs.length === 0) {
-      add('(empty - no billing call has reached the native plugin yet)');
-    } else {
-      nativeLogs.forEach((l) => add(l));
-    }
-  } else {
-    add('(unavailable - getDiagnostics did not return)');
-  }
 
   add('');
   add('=== END OF REPORT ===');

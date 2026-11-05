@@ -6,5 +6,8 @@
     </linearGradient>
   </defs>
   <rect width="512" height="512" rx="112" fill="url(#bg)"/>
-  <text x="256" y="340" font-family="Arial, sans-serif" font-size="280" font-weight="bold" fill="white" text-anchor="middle">ک</text>
+  <!-- wrench glyph -->
+  <g transform="translate(256 256) scale(1.35) translate(-256 -256)">
+    <path fill="#ffffff" d="M336 96a88 88 0 0 0-92 122L120 442l62 62 224-224a88 88 0 0 0 96-92l-70 70-56-14-14-56z"/>
+  </g>
 </svg>

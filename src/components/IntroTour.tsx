@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion, type PanInfo } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
-import { ArrowLeft, ArrowRight, Check, FileDown, FileText, PenLine, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, ClipboardList, UserPlus, Wrench, BadgeCheck } from 'lucide-react';
 
 /**
  * First-run onboarding, shown exactly once before the login page on new
  * installs. The "seen" flag itself is written by the parent via safeStorage.
  */
-export const INTRO_SEEN_KEY = 'kateb_intro_v2_seen';
+export const INTRO_SEEN_KEY = 'serviceyab_intro_v1_seen';
 
 interface Slide {
   Icon: LucideIcon;
@@ -19,32 +19,32 @@ interface Slide {
 
 const slides: Slide[] = [
   {
-    Icon: PenLine,
-    grad: 'from-sky-500 to-indigo-500',
-    title: 'به کاتب خوش آمدید',
-    desc: 'سلام! با «کاتب» دیگه لازم نیست برای نوشتن نامه‌های اداری و سندها کفش آهنی پات کنی! کاتب یه دستیار هوشمند مجهز به هوش مصنوعیه که کار نامه‌نگاری رو برات از این رو به اون رو می‌کنه.',
-    points: ['فقط بگو چی می‌خوای؛ مثلاً «یه نامه مرخصی می‌خوام»', 'شروع رایگان و بدون تنظیمات پیچیده'],
+    Icon: Wrench,
+    grad: 'from-indigo-500 to-sky-500',
+    title: 'به سرویس‌یاب خوش آمدید',
+    desc: 'سرویس‌یاب زیرساخت اولیه تشکیل شبکه تخصصی تعمیرات بردهای الکترونیکی است. برای پیوستن به شبکه، کافیه ثبت‌نام کنی و تخصصت رو به‌صورت ساختاریافته ثابت کنی.',
+    points: ['ثبت‌نام ساده با شماره موبایل و کد تأیید', 'همه مراحل از همین برنامه یا وب‌سایت قابل انجام است'],
   },
   {
-    Icon: Sparkles,
-    grad: 'from-violet-500 to-fuchsia-500',
-    title: 'با هوش مصنوعی بنویسید',
-    desc: 'اصلاً لازم نیست نگران باشی چطوری شروع کنی یا چی بنویسی. کاتب مثل یه دوست حرفه‌ای چندتا سوال ساده ازت می‌پرسه، اطلاعات رو جمع می‌کنه و همون‌موقع یه نامه یا سند کامل و بی‌نقص بهت تحویل می‌ده!',
-    points: ['نامه‌های اداری، قراردادها، شکوائیه، معرفی‌نامه و اسناد حقوقی', 'فقط منظورت رو به زبان عادی بگو؛ کاتب خودش می‌فهمه و راهنماییت می‌کنه'],
-  },
-  {
-    Icon: FileText,
+    Icon: UserPlus,
     grad: 'from-emerald-500 to-teal-500',
-    title: 'پروفایل و قالب‌های آماده',
-    desc: 'اطلاعات مهم خودت مثل اسم، شغل و اسم شرکت رو یک‌بار ذخیره کن؛ دفعه بعد کاتب خودشون رو جایگزین می‌کنه و دیگه لازم نیست دوباره بنویسی. کلی قالب آماده و خوشگل هم در دسته‌بندی‌های مختلف داریم.',
-    points: ['قالب‌های آماده برای ایده گرفتن یا استفاده مستقیم', 'پروفایل شخصی؛ دیگه هیچ اطلاعاتی رو دوباره تایپ نمی‌کنی'],
+    title: 'پروفایل حرفه‌ای بسازید',
+    desc: 'اطلاعات فردی، آموزشی و تخصصی خودت رو در یک پرونده منظم ثبت کن؛ همون پرونده‌ای که مبنای بررسی اولیه درخواست همکاری‌ات توسط شرکت می‌شه.',
+    points: ['اطلاعات فردی، آموزشی و تخصصی در یک پرونده واحد', 'امکان ویرایش اطلاعات در هر زمان'],
   },
   {
-    Icon: FileDown,
-    grad: 'from-orange-500 to-rose-500',
-    title: 'ویرایش، ذخیره و خروجی PDF',
-    desc: 'بعد از اینکه کاتب نامه رو ساخت، می‌تونی هرجوری دوست داری ویرایشش کنی، ذخیره‌اش کنی یا مستقیم پرینت بگیری. خروجی نهایی PDF با فرمت حرفه‌ای و قابل پرینت آماده‌ست.',
-    points: ['PDF با فرمت‌بندی کامل و کیفیت چاپ', 'ویرایش آزاد، ذخیره و اشتراک‌گذاری سریع'],
+    Icon: ClipboardList,
+    grad: 'from-violet-500 to-fuchsia-500',
+    title: 'آزمون تخصصی آنلاین',
+    desc: 'در صورت فعال‌بودن آزمون، در آزمون چهارگزینه‌ای تخصصی شرکت می‌کنی. تایمر و ذخیره پاسخ‌ها به‌صورت خودکار انجام می‌شه و نتیجه در پرونده‌ات ثبت می‌شه.',
+    points: ['سؤالات چهارگزینه‌ای مرتبط با تعمیرات برد', 'ذخیره خودکار پاسخ‌ها و مدیریت زمان از سمت سرور'],
+  },
+  {
+    Icon: BadgeCheck,
+    grad: 'from-amber-500 to-orange-500',
+    title: 'بررسی و اعلام نتیجه',
+    desc: 'اطلاعات و نتیجه آزمون تو توسط کارشناسان شرکت بررسی می‌شه و وضعیت درخواستت رو همیشه می‌تونی از پنل کاربری دنبال کنی.',
+    points: ['مشاهده وضعیت درخواست در داشبورد شخصی', 'حفاظت از اطلاعات شخصی در تمام مراحل'],
   },
 ];
 
@@ -130,8 +130,8 @@ export function IntroTour({ onDone }: { onDone: () => void }) {
                 <ul className="mt-5 space-y-2.5 text-right">
                   {slide.points.map((p) => (
                     <li key={p} className="flex items-center gap-2.5 rounded-xl bg-slate-50 px-3.5 py-2.5">
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sky-100">
-                        <Check className="h-3 w-3 text-sky-600" />
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-100">
+                        <Check className="h-3 w-3 text-indigo-600" />
                       </span>
                       <span className="text-[13px] text-slate-600">{p}</span>
                     </li>
@@ -146,13 +146,13 @@ export function IntroTour({ onDone }: { onDone: () => void }) {
           <div className="mb-5 flex items-center justify-center gap-2">
             {slides.map((_, i) => (
               <button key={i} type="button" onClick={() => jumpTo(i)} aria-label={`مرحله ${i + 1}`}
-                className={`h-2.5 rounded-full transition-all duration-300 ${i === index ? 'w-7 bg-sky-600' : 'w-2.5 bg-slate-300 hover:bg-slate-400'}`} />
+                className={`h-2.5 rounded-full transition-all duration-300 ${i === index ? 'w-7 bg-indigo-600' : 'w-2.5 bg-slate-300 hover:bg-slate-400'}`} />
             ))}
           </div>
 
           <div className="flex items-center gap-3">
             <button type="button" onClick={isLast ? onDone : goNext}
-              className="focus-ring flex w-full items-center justify-center gap-2 rounded-xl bg-sky-600 py-3.5 text-sm font-semibold text-white shadow-lg shadow-sky-500/30 transition-colors hover:bg-sky-700">
+              className="focus-ring flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 transition-colors hover:bg-indigo-700">
               {isLast ? 'شروع کنید' : 'بعدی'}
               {isLast ? <Check className="h-4 w-4" /> : <ArrowLeft className="h-4 w-4" />}
             </button>

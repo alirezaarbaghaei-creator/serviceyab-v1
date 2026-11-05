@@ -12,8 +12,8 @@
 
 declare const __KATEB_BUILD_VERSION__: string | undefined;
 
-const VERSION_KEY = 'kateb_build_version';
-const RELOADED_KEY = 'kateb_update_reloaded';
+const VERSION_KEY = 'serviceyab_build_version';
+const RELOADED_KEY = 'serviceyab_update_reloaded';
 
 export function getBuildVersion(): string {
   try {

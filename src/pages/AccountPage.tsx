@@ -1,257 +1,159 @@
 import { useState } from 'react';
 import {
-  ArrowRight,
-  Settings,
-  X,
-  Phone,
-  Loader2,
-  CheckCircle2,
-  LogOut,
-  User,
-  Clock,
-  Crown,
-  Zap,
-  Gift,
+  CheckCircle2, KeyRound, Loader2, LogOut, Phone, User,
 } from 'lucide-react';
 import { useAppStore } from '@/store/appStore';
 import { useAuthStore } from '@/store/authStore';
-import { usePlanStore } from '@/store/planStore';
-import { PLANS } from '@/data/plans';
+import { STATUS_LABELS, type ApplicantStatus } from '@/types';
 import * as api from '@/lib/api';
 
 /** Shown in the account page. Keep in sync with android/app/build.gradle. */
-const APP_VERSION_LABEL = '1.6.9';
-const APP_BUILD_NUMBER = '16';
+const APP_VERSION_LABEL = '1.0.0';
+const APP_BUILD_NUMBER = '1';
 
 export function AccountPage() {
-  const setPage = useAppStore((s) => s.setPage);
+  const showToast = useAppStore((s) => s.showToast);
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
   const signOut = useAuthStore((s) => s.signOut);
-  const planType = usePlanStore((s) => s.planType);
-  const expiresAt = usePlanStore((s) => s.expiresAt);
-  const currentPlan = PLANS.find((p) => p.id === planType);
-  const [fullName, setFullName] = useState(user?.full_name ?? '');
-  const [password, setPassword] = useState('');
-  const [passwordConfirmation, setPasswordConfirmation] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [savingPassword, setSavingPassword] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [passwordMessage, setPasswordMessage] = useState('');
-  const [error, setError] = useState('');
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-    setSaving(true);
-    setError('');
-    setSaved(false);
+  const [fullName, setFullName] = useState(user?.full_name ?? '');
+  const [savingName, setSavingName] = useState(false);
+  const [nameSaved, setNameSaved] = useState(false);
+
+  const [password, setPassword] = useState('');
+  const [savingPass, setSavingPass] = useState(false);
+  const [passSaved, setPassSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const saveName = async () => {
+    if (!fullName.trim()) { setError('نام نمی‌تواند خالی باشد'); return; }
+    setSavingName(true);
+    setError(null);
     try {
-      const updatedUser = await api.updateAccount(fullName.trim());
-      if (updatedUser) setUser(updatedUser);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
+      const updated = await api.updateAccount(fullName.trim());
+      if (updated) setUser(updated);
+      setNameSaved(true);
+      showToast('نام با موفقیت ویرایش شد');
+      setTimeout(() => setNameSaved(false), 2000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'خطای ناشناخته');
+      setError(err instanceof Error ? err.message : 'خطا در ذخیره نام');
     } finally {
-      setSaving(false);
+      setSavingName(false);
     }
   };
 
-  const handlePasswordChange = async () => {
-    setPasswordMessage('');
-    if (password.length < 4) {
-      setPasswordMessage('رمز عبور باید حداقل ۴ کاراکتر باشد.');
-      return;
-    }
-    if (password !== passwordConfirmation) {
-      setPasswordMessage('تکرار رمز عبور با رمز جدید یکسان نیست.');
-      return;
-    }
-    setSavingPassword(true);
+  const savePassword = async () => {
+    if (password.length < 4) { setError('رمز عبور باید حداقل ۴ کاراکتر باشد'); return; }
+    setSavingPass(true);
+    setError(null);
     try {
       await api.setPassword(password);
       setPassword('');
-      setPasswordConfirmation('');
-      setPasswordMessage('رمز عبور با موفقیت تغییر کرد.');
+      setPassSaved(true);
+      showToast('رمز عبور با موفقیت تغییر کرد');
+      setTimeout(() => setPassSaved(false), 2000);
     } catch (err) {
-      setPasswordMessage(err instanceof Error ? err.message : 'تغییر رمز عبور انجام نشد.');
+      setError(err instanceof Error ? err.message : 'خطا در تغییر رمز');
     } finally {
-      setSavingPassword(false);
+      setSavingPass(false);
     }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
   };
 
   return (
     <div className="space-y-5">
-      {/* Subscription card */}
-      <div className="glass rounded-2xl p-5 shadow-glass">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${currentPlan?.gradient ?? 'from-slate-400 to-slate-600'} text-white shadow-lg`}>
-              {planType === 'pro' ? <Crown className="h-6 w-6" /> : planType === 'basic' ? <Zap className="h-6 w-6" /> : <Gift className="h-6 w-6" />}
-            </div>
-            <div>
-              <p className="text-xs text-slate-500">طرح اشتراک</p>
-              <p className="text-lg font-bold text-slate-900">طرح {currentPlan?.name ?? 'آزمایشی'}</p>
-              {expiresAt ? (
-                <p className="text-[11px] text-slate-400 font-medium flex items-center gap-1 mt-0.5">
-                  <Clock className="h-3 w-3" />
-                  انقضا: {new Date(expiresAt).toLocaleDateString('fa-IR')}
-                </p>
-              ) : planType === 'free' && (
-                <p className="text-[11px] text-slate-400 font-medium mt-0.5">بدون انقضا</p>
-              )}
-            </div>
+      <div>
+        <h1 className="text-xl font-bold text-ink-900">حساب کاربری</h1>
+        <p className="text-sm text-ink-500 mt-1">مشاهده و ویرایش اطلاعات حساب</p>
+      </div>
+
+      {error && (
+        <div className="rounded-xl bg-rose-50 border border-rose-200 p-4 text-sm text-rose-700">{error}</div>
+      )}
+
+      {/* Account summary */}
+      <div className="glass rounded-2xl p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-ink-600">
+            <User className="h-4 w-4 text-ink-400" />
+            نام و نام خانوادگی
           </div>
-          {planType !== 'pro' && (
-            <button
-              onClick={() => setPage('pricing')}
-              className="flex items-center gap-1.5 rounded-xl bg-indigo-600 text-white px-4 py-2 text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-500/30"
-            >
-              <Crown className="h-4 w-4" />
-              ارتقای طرح
-            </button>
-          )}
+          <span className="font-semibold text-ink-900">{user?.full_name || '—'}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-ink-600">
+            <Phone className="h-4 w-4 text-ink-400" />
+            شماره موبایل
+          </div>
+          <span className="font-semibold text-ink-900" dir="ltr">{user?.phone}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-ink-600">وضعیت درخواست همکاری</span>
+          <span className="rounded-full bg-primary-100 px-3 py-1 text-xs font-bold text-primary-700">
+            {STATUS_LABELS[(user?.status ?? 'new') as ApplicantStatus]}
+          </span>
         </div>
       </div>
 
-      {/* Header */}
-      <div className="flex items-center gap-3">
+      {/* Edit name */}
+      <div className="glass rounded-2xl p-5 space-y-3">
+        <h2 className="font-bold text-ink-900 text-sm">ویرایش نام</h2>
+        <input
+          type="text"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          placeholder="نام و نام خانوادگی"
+          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm focus-ring"
+        />
         <button
-          onClick={() => setPage('dashboard')}
-          className="flex h-10 w-10 items-center justify-center rounded-xl glass text-slate-600 hover:text-slate-900 shadow-glass"
+          onClick={saveName}
+          disabled={savingName}
+          className="w-full py-3 rounded-xl bg-primary-600 text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-60"
         >
-          <ArrowRight className="h-5 w-5" />
+          {savingName ? <Loader2 className="h-4 w-4 animate-spin" /> : nameSaved ? <CheckCircle2 className="h-4 w-4" /> : null}
+          {nameSaved ? 'ذخیره شد' : 'ذخیره نام'}
         </button>
-        <div className="flex items-center gap-2">
-          <Settings className="h-5 w-5 text-sky-500" />
-          <h2 className="text-xl font-bold text-slate-900">حساب کاربری</h2>
-        </div>
       </div>
 
-      {/* App version */}
-      <div className="glass rounded-2xl p-5 shadow-glass">
-        <p className="text-xs text-slate-500">نسخه برنامه</p>
-        <p className="mt-1 text-sm font-semibold text-slate-800" dir="ltr">
-          {APP_VERSION_LABEL} ({APP_BUILD_NUMBER})
-        </p>
+      {/* Change password */}
+      <div className="glass rounded-2xl p-5 space-y-3">
+        <h2 className="font-bold text-ink-900 text-sm flex items-center gap-2">
+          <KeyRound className="h-4 w-4 text-primary-500" />
+          تغییر رمز عبور
+        </h2>
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="رمز عبور جدید (حداقل ۴ کاراکتر)"
+          dir="ltr"
+          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-left focus-ring"
+        />
+        <button
+          onClick={savePassword}
+          disabled={savingPass || !password}
+          className="w-full py-3 rounded-xl bg-primary-600 text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-60"
+        >
+          {savingPass ? <Loader2 className="h-4 w-4 animate-spin" /> : passSaved ? <CheckCircle2 className="h-4 w-4" /> : null}
+          {passSaved ? 'ذخیره شد' : 'تغییر رمز'}
+        </button>
       </div>
 
-      {/* Profile card */}
-      <div className="glass rounded-2xl p-5 shadow-glass">
-        {/* Avatar + name */}
-        <div className="flex items-center gap-3 mb-5 pb-5 border-b border-slate-100">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-700 to-slate-900 text-white text-xl font-bold">
-            {(user?.full_name || user?.phone || 'ک').charAt(0).toUpperCase()}
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-bold text-slate-900 truncate">{user?.full_name || 'کاربر'}</p>
-            <p className="text-xs text-slate-400 truncate" dir="ltr">{user?.phone ?? ''}</p>
-          </div>
-        </div>
-
-        {/* Phone (read-only) */}
-        <div className="mb-4">
-          <label className="mb-1.5 block text-xs font-medium text-slate-600">شماره موبایل</label>
-          <div className="relative">
-            <Phone className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-sky-500" />
-            <input
-              type="tel"
-              value={user?.phone ?? ''}
-              readOnly
-              dir="ltr"
-              className="w-full rounded-xl border border-sky-100 bg-white py-3 pl-4 pr-11 text-sm font-semibold text-slate-800 text-left outline-none"
-            />
-          </div>
-          <p className="mt-1 text-[10px] text-slate-400">شماره موبایل قابل ویرایش نیست.</p>
-        </div>
-
-        {/* Full name */}
-        <form onSubmit={handleSave} className="mb-4">
-          <label className="mb-1.5 block text-xs font-medium text-slate-600">نام و نام خانوادگی</label>
-          <div className="relative mb-3">
-            <User className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <input
-              type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="نام شما"
-              dir="rtl"
-              className="w-full rounded-xl border border-slate-200 bg-white py-3 pr-11 pl-4 text-sm text-slate-900 placeholder:text-slate-400 focus-ring"
-            />
-          </div>
-
-          {error && (
-            <div className="mb-3 flex items-center gap-2 rounded-xl bg-red-50 border border-red-100 px-4 py-3">
-              <X className="h-4 w-4 text-red-500 shrink-0" />
-              <p className="text-xs text-red-600">{error}</p>
-            </div>
-          )}
-
-          {saved && (
-            <div className="mb-3 flex items-center gap-2 rounded-xl bg-green-50 border border-green-100 px-4 py-3">
-              <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-              <p className="text-xs text-green-600">اطلاعات حساب با موفقیت به‌روزرسانی شد.</p>
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={saving}
-            className="w-full flex items-center justify-center gap-2 rounded-xl bg-sky-600 text-white py-3 text-sm font-semibold hover:bg-sky-700 transition-colors shadow-lg shadow-sky-500/30 disabled:opacity-50"
-          >
-            {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : 'ذخیره تغییرات'}
-          </button>
-        </form>
-
-        {/* Password change */}
-        <div className="border-t border-slate-100 pt-4">
-          <div className="mb-3 flex items-center gap-2">
-            <Settings className="h-4 w-4 text-sky-500" />
-            <h4 className="text-sm font-bold text-slate-800">تغییر رمز عبور</h4>
-          </div>
-          <div className="space-y-2.5">
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="رمز عبور جدید"
-              dir="ltr"
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus-ring"
-            />
-            <input
-              type="password"
-              value={passwordConfirmation}
-              onChange={(e) => setPasswordConfirmation(e.target.value)}
-              placeholder="تکرار رمز عبور جدید"
-              dir="ltr"
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus-ring"
-            />
-            {passwordMessage && (
-              <p className={`text-xs ${passwordMessage.includes('موفقیت') ? 'text-emerald-600' : 'text-red-500'}`}>
-                {passwordMessage}
-              </p>
-            )}
-            <button
-              onClick={handlePasswordChange}
-              disabled={savingPassword}
-              className="w-full rounded-xl bg-sky-600 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-500/20 transition-colors hover:bg-sky-700 disabled:opacity-50"
-            >
-              {savingPassword ? <Loader2 className="mx-auto h-5 w-5 animate-spin" /> : 'تغییر رمز عبور'}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Sign out */}
       <button
-        onClick={() => signOut()}
-        className="w-full flex items-center justify-center gap-2 text-xs text-slate-400 hover:text-red-500 transition-colors py-2"
+        onClick={handleSignOut}
+        className="w-full py-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 font-semibold text-sm flex items-center justify-center gap-2 hover:bg-rose-100 transition-colors"
       >
         <LogOut className="h-4 w-4" />
-        خروج از حساب
+        خروج از حساب کاربری
       </button>
+
+      <p className="text-center text-xs text-ink-400">
+        سرویس‌یاب — نسخه {APP_VERSION_LABEL} (بیلد {APP_BUILD_NUMBER})
+      </p>
     </div>
   );
 }
-

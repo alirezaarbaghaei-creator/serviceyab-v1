@@ -3,33 +3,22 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Sidebar, BottomNav } from '@/components/Navigation';
 import { MobileHeader } from '@/components/MobileHeader';
+import { Landing } from '@/pages/Landing';
 import { Dashboard } from '@/pages/Dashboard';
-import { Templates } from '@/pages/Templates';
-import { ChatFlow } from '@/pages/ChatFlow';
-import { Preview } from '@/pages/Preview';
-import { Archive } from '@/pages/Archive';
 import { ProfilePage } from '@/pages/ProfilePage';
-import { Discovery } from '@/pages/Discovery';
-import { Drafts } from '@/pages/Drafts';
+import { ExamIntro } from '@/pages/ExamIntro';
+import { ExamRun } from '@/pages/ExamRun';
+import { ExamResultPage } from '@/pages/ExamResult';
 import { AuthPage } from '@/pages/AuthPage';
 import { AdminPage } from '@/pages/AdminPage';
 import { AccountPage } from '@/pages/AccountPage';
-import { PricingPage } from '@/pages/PricingPage';
-import { ManagerPage } from '@/pages/ManagerPage';
-import { PaymentCallback } from '@/pages/PaymentCallback';
-import { PaymentResult } from '@/pages/PaymentResult';
 import { OfflineBanner } from '@/components/OfflineBanner';
-import { UpgradeModal } from '@/components/UpgradeModal';
 import { useAppStore } from '@/store/appStore';
 import { useAuthStore } from '@/store/authStore';
-import { useDraftsStore } from '@/store/draftsStore';
 import { useProfileStore } from '@/store/profileStore';
-import { useArchiveStore } from '@/store/archiveStore';
-import { useTemplateStore } from '@/store/templateStore';
-import { useDeepLinks, parseDeepLink } from '@/hooks/useDeepLinks';
-import { initPushNotifications, cleanupPushNotifications } from '@/services/pushNotifications';
 import { IntroTour, INTRO_SEEN_KEY } from '@/components/IntroTour';
 import { getItem as getStoredItem, setItem as setStoredItem } from '@/lib/safeStorage';
+import { initPushNotifications, cleanupPushNotifications } from '@/services/pushNotifications';
 import { installDiagnostics } from '@/services/diagnostics';
 
 // Install the global error capture at module load, before React mounts, so early
@@ -39,25 +28,18 @@ installDiagnostics();
 function AppShell() {
   const currentPage = useAppStore((s) => s.currentPage);
   const setPage = useAppStore((s) => s.setPage);
+  const toast = useAppStore((s) => s.toast);
+  const clearToast = useAppStore((s) => s.clearToast);
+  const examRunning = useAppStore((s) => s.examRunning);
   const session = useAuthStore((s) => s.session);
   const loading = useAuthStore((s) => s.loading);
   const restoreSession = useAuthStore((s) => s.restoreSession);
-  const loadDrafts = useDraftsStore((s) => s.loadDrafts);
-  const loadProfiles = useProfileStore((s) => s.loadProfiles);
-  const loadLetters = useArchiveStore((s) => s.loadLetters);
-  const loadTemplates = useTemplateStore((s) => s.loadTemplates);
-
-  // Track whether we're showing a standalone payment page (not part of the SPA)
-  const [paymentView, setPaymentView] = useState<'callback' | 'result' | null>(() => {
-    const path = window.location.pathname;
-    if (path === '/payment/callback') return 'callback';
-    if (path === '/payment/result') return 'result';
-    return null;
-  });
+  const loadProfile = useProfileStore((s) => s.loadProfile);
 
   // First-run onboarding: shown once before the login page, then remembered
   // in safeStorage (memory fallback on WebViews where localStorage is blocked).
   const [introSeen, setIntroSeen] = useState(() => getStoredItem(INTRO_SEEN_KEY) === '1');
+  const [landingDismissed, setLandingDismissed] = useState(false);
 
   const handleIntroDone = () => {
     setStoredItem(INTRO_SEEN_KEY, '1');
@@ -68,8 +50,13 @@ function AppShell() {
     restoreSession();
   }, [restoreSession]);
 
+  useEffect(() => {
+    if (session) {
+      loadProfile();
+    }
+  }, [session, loadProfile]);
+
   // Initialize FCM push notifications on native (Android) builds.
-  // Stage 1: permission + registration + listeners only; token is logged.
   useEffect(() => {
     initPushNotifications().catch((err) => {
       console.error('[Push] Init failed', err);
@@ -79,39 +66,12 @@ function AppShell() {
     };
   }, []);
 
+  // Auto-dismiss toast
   useEffect(() => {
-    if (session) {
-      loadDrafts();
-      loadProfiles();
-      loadLetters();
-      loadTemplates();
-    }
-  }, [session, loadDrafts, loadProfiles, loadLetters, loadTemplates]);
-
-  // Handle deep links from Capacitor (Android)
-  useDeepLinks((url) => {
-    const parsed = parseDeepLink(url);
-    if (!parsed) return;
-    let { pathname, search } = parsed;
-
-    // Normalize kateb://payment/callback → /payment/callback
-    if (pathname === '/callback') pathname = '/payment/callback';
-    if (pathname === '/result') pathname = '/payment/result';
-
-    if (pathname === '/payment/callback') {
-      const queryString = search.toString();
-      const newUrl = queryString ? `/payment/callback?${queryString}` : '/payment/callback';
-      window.history.replaceState({}, '', newUrl);
-      setPaymentView('callback');
-    } else if (pathname === '/payment/result') {
-      const orderId = search.get('order_id');
-      const newUrl = orderId
-        ? `/payment/result?order_id=${orderId}`
-        : '/payment/result';
-      window.history.replaceState({}, '', newUrl);
-      setPaymentView('result');
-    }
-  });
+    if (!toast) return;
+    const t = setTimeout(clearToast, 3000);
+    return () => clearTimeout(t);
+  }, [toast, clearToast]);
 
   // Handle Android back button
   useEffect(() => {
@@ -120,43 +80,27 @@ function AppShell() {
       CapacitorApp.addListener('backButton', () => {
         // If we're on a sub-page, go back to dashboard
         if (currentPage !== 'dashboard') {
+          if (examRunning) return; // avoid accidental exit mid-exam
           setPage('dashboard');
         } else {
           // On dashboard, exit the app
           CapacitorApp.exitApp().catch((error: unknown) => {
-            console.error('[Kateb] app exit failed', error);
+            console.error('[ServiceYab] app exit failed', error);
           });
         }
       })
         .then((l) => { listener = l; })
         .catch((error: unknown) => {
-          console.error('[Kateb] back-button listener unavailable', error);
+          console.error('[ServiceYab] back-button listener unavailable', error);
         });
     } catch (error) {
-      console.error('[Kateb] back-button initialization failed', error);
+      console.error('[ServiceYab] back-button initialization failed', error);
     }
 
     return () => {
       if (listener) listener.remove().catch(() => {});
     };
-  }, [currentPage, setPage]);
-
-  // Payment callback route: standalone page, no auth required
-  if (paymentView === 'callback') {
-    return <PaymentCallback onDone={(oid) => {
-      const newUrl = oid ? `/payment/result?order_id=${oid}` : '/payment/result';
-      window.history.replaceState({}, '', newUrl);
-      setPaymentView('result');
-    }} />;
-  }
-
-  // Payment result route: standalone page, no auth required
-  if (paymentView === 'result') {
-    return <PaymentResult onDone={() => {
-      window.history.replaceState({}, '', '/');
-      setPaymentView(null);
-    }} />;
-  }
+  }, [currentPage, setPage, examRunning]);
 
   if (loading) {
     return (
@@ -167,27 +111,25 @@ function AppShell() {
   }
 
   if (!session) {
-    // First launch: multi-step intro first, login page only after it's done
-    // (or skipped). The seen-flag makes sure it never shows a second time.
+    // First launch: multi-step intro first, then public landing, then login.
+    // The seen-flag makes sure the tour never shows a second time.
     if (!introSeen) {
       return <IntroTour onDone={handleIntroDone} />;
+    }
+    if (!landingDismissed) {
+      return <Landing onEnter={() => setLandingDismissed(true)} />;
     }
     return <AuthPage />;
   }
 
   const pages: Record<string, React.ReactNode> = {
     dashboard: <Dashboard />,
-    templates: <Templates />,
-    discovery: <Discovery />,
-    chat: <ChatFlow />,
-    preview: <Preview />,
-    archive: <Archive />,
-    drafts: <Drafts />,
     profile: <ProfilePage />,
+    'exam-intro': <ExamIntro />,
+    'exam-run': <ExamRun />,
+    'exam-result': <ExamResultPage />,
     admin: <AdminPage />,
     account: <AccountPage />,
-    pricing: <PricingPage />,
-    manager: <ManagerPage />,
   };
 
   return (
@@ -220,7 +162,15 @@ function AppShell() {
       </main>
 
       <BottomNav />
-      <UpgradeModal />
+
+      {/* Global toast */}
+      {toast && (
+        <div className="fixed bottom-24 lg:bottom-8 inset-x-0 z-50 flex justify-center pointer-events-none">
+          <div className="rounded-xl bg-slate-900/90 text-white text-sm px-5 py-3 shadow-2xl backdrop-blur">
+            {toast}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

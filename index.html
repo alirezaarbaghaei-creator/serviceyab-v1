@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>کاتب | دستیار هوشمند نگارش</title>
-    <meta property="og:image" content="https://bolt.new/static/og_default.png" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:image" content="https://bolt.new/static/og_default.png" />
+    <title>سرویس‌یاب | شبکه تخصصی تعمیرات برد</title>
+    
+    
+    
 
     <!-- PWA / Mobile App Meta Tags -->
     <link rel="manifest" href="/manifest.json" />
@@ -14,8 +14,8 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="کاتب" />
-    <meta name="application-name" content="کاتب" />
+    <meta name="apple-mobile-web-app-title" content="سرویس‌یاب" />
+    <meta name="application-name" content="سرویس‌یاب" />
     <meta name="format-detection" content="telephone=no" />
     <meta name="msapplication-TileColor" content="#0f172a" />
 
@@ -56,10 +56,10 @@
     <script type="module" src="/src/main.tsx"></script>
     <script>
       window.addEventListener('error', function (event) {
-        console.error('[Kateb] runtime error', event.error || event.message);
+        console.error('[ServiceYab] runtime error', event.error || event.message);
       });
       window.addEventListener('unhandledrejection', function (event) {
-        console.error('[Kateb] unhandled rejection', event.reason);
+        console.error('[ServiceYab] unhandled rejection', event.reason);
       });
 
       // Service Worker only for web/PWA — disabled in Android WebView/APK
@@ -78,8 +78,8 @@
               // tab — guard with sessionStorage so only one reloads.
               function reloadOnce() {
                 try {
-                  if (!sessionStorage.getItem('kateb_update_reloaded')) {
-                    sessionStorage.setItem('kateb_update_reloaded', '1');
+                  if (!sessionStorage.getItem('serviceyab_update_reloaded')) {
+                    sessionStorage.setItem('serviceyab_update_reloaded', '1');
                     window.location.reload();
                   }
                 } catch (e) { window.location.reload(); }

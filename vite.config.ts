@@ -26,7 +26,7 @@ const BUILD_VERSION = resolveBuildVersion();
 
 function versionStampPlugin() {
   return {
-    name: 'kateb-version-stamp',
+    name: 'serviceyab-version-stamp',
     // public/ files are copied to dist before writeBundle, so patch the
     // emitted dist/sw.js + write dist/version.json here — no timing games.
     writeBundle() {
@@ -40,7 +40,7 @@ function versionStampPlugin() {
           path.resolve(__dirname, 'dist/version.json'),
           JSON.stringify({ version: BUILD_VERSION, builtAt: new Date().toISOString() }),
         );
-        console.log(`[kateb] build version: ${BUILD_VERSION}`);
+        console.log(`[serviceyab] build version: ${BUILD_VERSION}`);
       } catch { /* ignore */ }
     },
   };

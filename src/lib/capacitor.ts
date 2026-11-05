@@ -199,74 +199,15 @@ export interface SilentDownloadResult {
 export async function saveBlobToDownloads(
   blob: Blob,
   fileName: string,
-  mimeType = 'application/pdf',
+  _mimeType = 'application/pdf',
 ): Promise<SilentDownloadResult> {
-  // Web: the browser download manager is already the "Download folder".
-  if (!isNativeApp()) {
-    triggerWebDownload(blob, fileName);
-    return {
-      downloaded: true,
-      opened: false,
-      displayName: fileName,
-      strategy: 'web',
-    };
-  }
-
-  const {
-    ensureDownloadsPlugin,
-    getDownloadsPluginSync,
-  } = await import('@/services/downloadsPlugin');
-
-  const ready = await ensureDownloadsPlugin();
-  const plugin = getDownloadsPluginSync();
-
-  if (!ready || !plugin) {
-    return {
-      downloaded: false,
-      opened: false,
-      displayName: fileName,
-      strategy: 'none',
-      fallbackReason: 'plugin-unavailable',
-    };
-  }
-
-  let saved;
-  try {
-    const base64 = await blobToBase64(blob);
-    saved = await plugin.saveToDownloads({ fileName, data: base64, mimeType });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.warn('[downloads] native save failed', err);
-    return {
-      downloaded: false,
-      opened: false,
-      displayName: fileName,
-      strategy: 'none',
-      fallbackReason: message,
-    };
-  }
-
-  const result: SilentDownloadResult = {
+  // The native MediaStore plugin was removed with the PDF-export stack in the
+  // serviceyab conversion; every platform now falls back to a browser download.
+  triggerWebDownload(blob, fileName);
+  return {
     downloaded: true,
     opened: false,
-    displayName: saved?.displayName ?? fileName,
-    strategy: saved?.strategy ?? 'unknown',
-    uri: saved?.uri,
+    displayName: fileName,
+    strategy: 'web',
   };
-
-  if (!saved?.uri) return result;
-
-  // The file is saved; opening it is a nice-to-have. A missing PDF viewer must
-  // not turn a successful download into an error message.
-  try {
-    const openResult = await plugin.openFile({ uri: saved.uri, mimeType });
-    result.opened = !!openResult?.opened;
-    if (!result.opened && openResult?.error === 'no_viewer') {
-      result.noViewer = true;
-    }
-  } catch (err) {
-    console.warn('[downloads] open after save failed', err);
-  }
-
-  return result;
 }

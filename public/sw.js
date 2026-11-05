@@ -1,5 +1,5 @@
 const CACHE_VERSION = '__KATEB_SW_VERSION__';
-const CACHE_NAME = `kateb-${CACHE_VERSION}`;
+const CACHE_NAME = `serviceyab-${CACHE_VERSION}`;
 const PRECACHE = ['./manifest.json'];
 
 // Navigation (HTML) requests: network-first so a new deploy is visible

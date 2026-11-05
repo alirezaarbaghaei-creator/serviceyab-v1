@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PenLine, Phone, Loader2, AlertCircle, Sparkles, KeyRound, ArrowRight, Lock, Eye, EyeOff, User, FileText, Bell, X } from 'lucide-react';
+import { Wrench, Phone, Loader2, AlertCircle, Sparkles, KeyRound, ArrowRight, Lock, Eye, EyeOff, User, FileText, Bell, X } from 'lucide-react';
 import * as api from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { ensureSmsAutofillPlugin, getSmsAutofillPluginSync } from '@/services/smsAutofillPlugin';
@@ -440,10 +440,10 @@ export function AuthPage() {
         <div className="glass rounded-3xl p-8 shadow-2xl">
           <div className="flex flex-col items-center mb-8">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-sky-700 shadow-lg shadow-sky-500/30 mb-4">
-              <PenLine className="h-8 w-8 text-white" />
+              <Wrench className="h-8 w-8 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-slate-900">کاتب</h1>
-            <p className="text-sm text-slate-500 mt-1">دستیار هوشمند نگارش مکتوب</p>
+            <h1 className="text-2xl font-bold text-slate-900">سرویس‌یاب</h1>
+            <p className="text-sm text-slate-500 mt-1">سامانه ارزیابی و جذب متقاضیان همکاری</p>
           </div>
 
           {/* Mode tabs */}
@@ -523,7 +523,7 @@ export function AuthPage() {
                     {!accessGranted && (
                       <div className="mt-2 rounded-lg bg-amber-50 border border-amber-100 p-2.5">
                         <p className="text-[11px] leading-relaxed text-amber-800 mb-2">
-                          برای خواندن خودکار کد، دسترسی «اعلان‌ها» را برای کاتب فعال کنید.
+                          برای خواندن خودکار کد، دسترسی «اعلان‌ها» را برای سرویس‌یاب فعال کنید.
                           هیچ مجوز پیامکی درخواست نمی‌شود.
                         </p>
                         <button type="button"
@@ -752,7 +752,7 @@ export function AuthPage() {
                     <div className="min-w-0 flex-1">
                       <h3 id="access-dialog-title" className="text-sm font-bold text-slate-800">تکمیل خودکار کد تأیید</h3>
                       <p className="mt-1 text-xs leading-6 text-slate-500">
-                        می‌خواهی کاتب به اعلان‌ها دسترسی داشته باشد تا پیامک حاوی کد را بخواند و آن را خودکار وارد کند؟ اگر نخواهی، کد را مثل همیشه خودت وارد می‌کنی.
+                        می‌خواهی سرویس‌یاب به اعلان‌ها دسترسی داشته باشد تا پیامک حاوی کد را بخواند و آن را خودکار وارد کند؟ اگر نخواهی، کد را مثل همیشه خودت وارد می‌کنی.
                       </p>
                     </div>
                     <button type="button" onClick={() => setShowAccessDialog(false)} aria-label="بستن"

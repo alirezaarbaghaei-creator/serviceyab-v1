@@ -1,8 +1,8 @@
 {
   "id": "com.kateb.app",
-  "name": "کاتب | دستیار هوشمند نگارش",
-  "short_name": "کاتب",
-  "description": "دستیار هوشمند نگارش مکتوب‌های رسمی فارسی",
+  "name": "سرویس‌یاب | شبکه تخصصی تعمیرات برد",
+  "short_name": "سرویس‌یاب",
+  "description": "سامانه ارزیابی اولیه متقاضیان همکاری با شبکه تخصصی تعمیرات بردهای الکترونیکی",
   "lang": "fa",
   "dir": "rtl",
   "start_url": "./",
@@ -11,7 +11,7 @@
   "orientation": "portrait",
   "theme_color": "#0f172a",
   "background_color": "#f8fafc",
-  "categories": ["productivity", "business", "utilities"],
+  "categories": ["business", "productivity"],
   "icons": [
     {
       "src": "./icon-192.png",

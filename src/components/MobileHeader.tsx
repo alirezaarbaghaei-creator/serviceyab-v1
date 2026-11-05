@@ -1,7 +1,6 @@
-import { PenLine, User, Shield } from 'lucide-react';
+import { Wrench, User, Shield } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useAppStore } from '@/store/appStore';
-import { CreditBadge } from '@/components/CreditBadge';
 
 export function MobileHeader() {
   const user = useAuthStore((s) => s.user);
@@ -14,17 +13,16 @@ export function MobileHeader() {
         {/* Logo + title on the left */}
         <div className="flex items-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 shadow-md shadow-indigo-500/30">
-            <PenLine className="h-5 w-5 text-white" />
+            <Wrench className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="text-base font-bold leading-none text-slate-900">کاتب</h1>
-            <p className="mt-0.5 text-[10px] text-slate-500">دستیار هوشمند نگارش</p>
+            <h1 className="text-base font-bold leading-none text-slate-900">سرویس‌یاب</h1>
+            <p className="mt-0.5 text-[10px] text-slate-500">شبکه تخصصی تعمیرات برد</p>
           </div>
         </div>
 
-        {/* Credit badge + Account button on the right */}
+        {/* Account button on the right */}
         <div className="flex items-center gap-2">
-          <CreditBadge compact />
           <button
             onClick={() => setPage(user?.is_admin ? 'admin' : 'account')}
             className="flex min-w-0 items-center gap-2 rounded-xl px-2 py-1.5 transition-colors hover:bg-slate-100/70"

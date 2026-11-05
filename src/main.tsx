@@ -13,7 +13,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
   }
 
   componentDidCatch(error: unknown) {
-    console.error('[Kateb] render error', error);
+    console.error('[ServiceYab] render error', error);
   }
 
   render() {
