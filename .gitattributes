@@ -1,0 +1,15 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Never let git treat these as text: a CRLF/LF conversion corrupts them and
+# breaks the Gradle wrapper and the Android build.
+*.jar binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+*.so binary
+*.keystore binary
+*.jks binary
+*.apk binary

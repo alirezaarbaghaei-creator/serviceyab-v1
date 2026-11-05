@@ -1,0 +1,32 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # SPA fallback: send non-file, non-directory requests to index.html
+  # This ensures /payment/callback and /payment/result routes work
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+# Fallback for hosts without mod_rewrite: try index.html directly
+<IfModule !mod_rewrite.c>
+  ErrorDocument 404 /index.html
+</IfModule>
+
+# ── UPDATE FIX: never let proxies/browsers serve a stale entry document ──
+# index.html + version.json are tiny; always revalidate so a new deploy is
+# visible without the user clearing cache. Hashed /assets/* files keep a long
+# cache (their filename changes every build, so they can never go stale).
+<FilesMatch "^(index\.html|version\.json|sw\.js|manifest\.json)$">
+  <IfModule mod_headers.c>
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+  </IfModule>
+</FilesMatch>
+<FilesMatch "\.(js|css|woff2?|ttf|png|jpg|jpeg|svg|ico)$">
+  <IfModule mod_headers.c>
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </IfModule>
+</FilesMatch>
