@@ -231,6 +231,7 @@ language plpgsql security definer set search_path = public
 as $$
 declare
   attempt_row public.exam_attempts%rowtype;
+  settings public.exam_settings%rowtype;
   correct integer;
   submitted timestamptz := now();
 begin
@@ -240,6 +241,7 @@ begin
   for update;
   if not found then raise exception 'attempt_not_found'; end if;
   if attempt_row.status <> 'in_progress' then raise exception 'attempt_already_submitted'; end if;
+  select * into settings from public.exam_settings where id = true;
   if attempt_row.expires_at < now() then
     update public.exam_attempts set status = 'expired', submitted_at = submitted where id = p_attempt_id;
     return query select null::numeric, null::integer, attempt_row.total_questions, submitted;
@@ -256,7 +258,7 @@ begin
       status = 'submitted',
       submitted_at = submitted
   where a.id = p_attempt_id;
-  return query select a.score, a.correct_count, a.total_questions, a.submitted_at
+  return query select case when settings.show_score_to_applicant then a.score else null::numeric end, a.correct_count, a.total_questions, a.submitted_at
     from public.exam_attempts a where a.id = p_attempt_id;
 end;
 $$;
