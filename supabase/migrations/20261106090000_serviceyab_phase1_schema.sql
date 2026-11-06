@@ -311,6 +311,9 @@ grant select (
 -- Applicants do not query raw attempt rows: score fields are private unless exposed
 -- through the application policy. Administrators use a guarded RPC instead.
 revoke all on public.exam_attempts from authenticated;
+-- Safe non-score columns are required by RLS predicates on candidate answer rows.
+grant select (id, applicant_id, started_at, expires_at, submitted_at, status, total_questions)
+on public.exam_attempts to authenticated;
 
 create or replace function public.admin_list_exam_attempts()
 returns table(
