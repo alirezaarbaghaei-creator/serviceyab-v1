@@ -1,5 +1,2 @@
-[functions.kateb-api]
-verify_jwt = false
-
-[functions.ai-proxy]
-verify_jwt = false
+# Supabase project configuration for ServiceYab phase one.
+# Legacy Kateb Edge Functions are intentionally not configured.
