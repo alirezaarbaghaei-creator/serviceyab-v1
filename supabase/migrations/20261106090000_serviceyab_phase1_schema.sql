@@ -268,7 +268,13 @@ revoke all on function public.submit_serviceyab_exam(uuid) from public;
 grant execute on function public.start_serviceyab_exam() to authenticated;
 grant execute on function public.submit_serviceyab_exam(uuid) to authenticated;
 
-grant select, insert on public.applicant_profiles to authenticated;
+grant select on public.applicant_profiles to authenticated;
+revoke insert on public.applicant_profiles from authenticated;
+grant insert (
+  user_id, full_name, phone, city, education_field, education_level,
+  education_center, completed_courses, skills, self_assessed_level,
+  experience, equipment, notes
+) on public.applicant_profiles to authenticated;
 revoke update on public.applicant_profiles from authenticated;
 grant update (full_name, phone, city, education_field, education_level, education_center, completed_courses, skills, self_assessed_level, experience, equipment, notes) on public.applicant_profiles to authenticated;
 grant select on public.user_roles to authenticated;
