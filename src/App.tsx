@@ -25,9 +25,9 @@ const statusLabels: Record<string, string> = {
   new: 'جدید', reviewing: 'در حال بررسی', pre_approved: 'تأیید اولیه', rejected: 'رد شده'
 };
 function normalizePhone(value: string) {
-  const digits = value.replace(/[۰-۹]/g, d => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[\\s()-]/g, '');
-  if (/^09\\d{9}$/.test(digits)) return '+98' + digits.slice(1);
-  if (/^9\\d{9}$/.test(digits)) return '+98' + digits;
+  const digits = value.replace(/[۰-۹]/g, d => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[\s()-]/g, '');
+  if (/^09\d{9}$/.test(digits)) return '+98' + digits.slice(1);
+  if (/^9\d{9}$/.test(digits)) return '+98' + digits;
   return digits;
 }
 const inputClass = 'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10';
