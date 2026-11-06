@@ -95,7 +95,7 @@ function App() {
     ]);
     setIsAdmin(!!role);
     if (row) setProfile(row as Profile);
-    else setProfile({ ...emptyProfile, user_id: userId, phone: session?.user?.phone ?? '' });
+    else setProfile({ ...emptyProfile, user_id: userId, phone: session?.user?.phone ?? '', full_name: session?.user?.user_metadata?.full_name ?? '' });
   }
 
   async function authenticate(e: React.FormEvent) {
@@ -140,7 +140,17 @@ function App() {
       notes: String(profile.notes || '')
     };
     try {
-      const { error } = await supabase.from('applicant_profiles').upsert(payload, { onConflict: 'user_id' });
+      const { data: existingProfile, error: lookupError } = await supabase.from('applicant_profiles').select('user_id').eq('user_id', session.user.id).maybeSingle();
+      if (lookupError) throw lookupError;
+      const { error } = existingProfile
+        ? await supabase.from('applicant_profiles').update({
+            full_name: payload.full_name, phone: payload.phone, city: payload.city,
+            education_field: payload.education_field, education_level: payload.education_level,
+            education_center: payload.education_center, completed_courses: payload.completed_courses,
+            skills: payload.skills, self_assessed_level: payload.self_assessed_level,
+            experience: payload.experience, equipment: payload.equipment, notes: payload.notes
+          }).eq('user_id', session.user.id)
+        : await supabase.from('applicant_profiles').insert(payload);
       if (error) throw error;
       setProfile({ ...payload, status: profile.status || 'new' });
       setMessage('اطلاعات پرونده ذخیره شد.');
@@ -221,6 +231,7 @@ function App() {
   }
 
   async function saveExamConfig() {
+    if (examConfig.is_active && bankCount < examConfig.question_count) { setMessage('برای فعال‌سازی آزمون باید حداقل به تعداد سؤالات انتخاب‌شده، سؤال فعال در بانک داشته باشید.'); return; }
     const { error } = await supabase.from('exam_settings').update(examConfig).eq('id', true);
     setMessage(error ? error.message : 'تنظیمات آزمون ذخیره شد.');
   }
