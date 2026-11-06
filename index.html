@@ -34,19 +34,7 @@
       window.addEventListener('unhandledrejection', function (event) {
         console.error('[ServiceYab] unhandled rejection', event.reason);
       });
-      // Service Worker is enabled only for the web/PWA build, not Android WebView.
-      (function () {
-        var isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
-        var isWeb = !isNative
-          && !window.matchMedia('(display-mode: standalone)').matches
-          && window.location.protocol.startsWith('http')
-          && !window.AndroidBridge;
-        if (isWeb && 'serviceWorker' in navigator) {
-          window.addEventListener('load', function () {
-            navigator.serviceWorker.register('/sw.js').catch(function () {});
-          });
-        }
-      })();
+
     </script>
   </body>
 </html>
