@@ -1,41 +1,18 @@
 {
-  "id": "com.kateb.app",
-  "name": "کاتب | دستیار هوشمند نگارش",
-  "short_name": "کاتب",
-  "description": "دستیار هوشمند نگارش مکتوب‌های رسمی فارسی",
+  "id": "/",
+  "name": "سرویس‌یاب | ره‌آورد الکترونیک",
+  "short_name": "سرویس‌یاب",
+  "description": "سامانه ثبت‌نام و ارزیابی اولیه متقاضیان همکاری در شبکه خدمات ره‌آورد الکترونیک",
   "lang": "fa",
   "dir": "rtl",
-  "start_url": "./",
-  "scope": "./",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
   "theme_color": "#0f172a",
   "background_color": "#f8fafc",
-  "categories": ["productivity", "business", "utilities"],
+  "categories": ["business", "education"],
   "icons": [
-    {
-      "src": "./icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "./icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "./icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "./icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
   ]
 }
