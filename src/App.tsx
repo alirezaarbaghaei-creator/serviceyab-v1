@@ -190,7 +190,7 @@ function App() {
       if (error) throw error;
       const result = Array.isArray(data) ? data[0] : data;
       const { data: examSettings } = await supabase.from('exam_settings').select('show_score_to_applicant').eq('id', true).maybeSingle();
-      setShowExamScore(!!examSettings?.show_score_to_applicant);
+      setShowExamScore(!!examSettings?.show_score_to_applicant && result?.score !== null && result?.score !== undefined);
       setExamResult(result);
       setExam([]);
       setMessage('پاسخ‌های شما با موفقیت ثبت شد.');
@@ -374,7 +374,7 @@ function App() {
           {exam.map((q,i)=><article key={q.question_id} className="rounded-2xl border border-slate-200 bg-white p-5"><p className="text-xs font-bold text-teal-700">سؤال {i+1}</p><h3 className="mt-2 font-bold leading-8">{q.prompt}</h3><div className="mt-4 grid gap-2">{q.options.map((option,index)=><label key={index} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-sm ${answers[q.question_id]===index?'border-teal-500 bg-teal-50':'border-slate-200 hover:bg-slate-50'}`}><input type="radio" name={q.question_id} checked={answers[q.question_id]===index} onChange={()=>setAnswers(a=>({...a,[q.question_id]:index}))}/>{option}</label>)}</div></article>)}
           <button onClick={submitExam} disabled={examBusy} className="w-full rounded-xl bg-teal-700 px-6 py-4 font-bold text-white disabled:opacity-50">{examBusy?'در حال ثبت…':'ثبت نهایی پاسخ‌ها'}</button>
         </div>}
-        {examResult && <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-6"><CheckCircle2 className="text-emerald-700" size={30}/><h3 className="mt-3 text-lg font-black">آزمون ثبت شد</h3><p className="mt-2 text-sm text-slate-700">پاسخ‌های شما با موفقیت ثبت شده‌اند. نتیجه مطابق سیاست نمایش آزمون در پنل شما یا مدیریت قابل مشاهده خواهد بود.</p>{showExamScore && <p className="mt-3 text-2xl font-black text-emerald-800">{Number(examResult.score).toFixed(1)}٪</p>}</div>}
+        {examResult && <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-6"><CheckCircle2 className="text-emerald-700" size={30}/><h3 className="mt-3 text-lg font-black">آزمون ثبت شد</h3><p className="mt-2 text-sm text-slate-700">{examResult.score === null ? 'زمان آزمون به پایان رسیده و نتیجه‌ای برای این تلاش ثبت نشده است.' : 'پاسخ‌های شما با موفقیت ثبت شده‌اند. نتیجه مطابق سیاست نمایش آزمون در پنل شما یا مدیریت قابل مشاهده خواهد بود.'}</p>{showExamScore && <p className="mt-3 text-2xl font-black text-emerald-800">{Number(examResult.score).toFixed(1)}٪</p>}</div>}
       </section>}
       {page === 'admin' && isAdmin && <section>
         <div className="flex flex-wrap items-end justify-between gap-4"><PageHeading icon={<ShieldCheck/>} title="مدیریت متقاضیان" desc="بررسی پرونده‌ها، وضعیت درخواست و خروجی اطلاعات."/><button onClick={exportCsv} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold"><Download size={17}/> دریافت CSV</button></div>
