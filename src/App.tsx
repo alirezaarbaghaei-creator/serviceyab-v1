@@ -24,6 +24,12 @@ const emptyProfile: Partial<Profile> = {
 const statusLabels: Record<string, string> = {
   new: 'جدید', reviewing: 'در حال بررسی', pre_approved: 'تأیید اولیه', rejected: 'رد شده'
 };
+function normalizePhone(value: string) {
+  const digits = value.replace(/[۰-۹]/g, d => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[\\s()-]/g, '');
+  if (/^09\\d{9}$/.test(digits)) return '+98' + digits.slice(1);
+  if (/^9\\d{9}$/.test(digits)) return '+98' + digits;
+  return digits;
+}
 const inputClass = 'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10';
 const labelClass = 'mb-2 block text-sm font-semibold text-slate-700';
 
@@ -53,6 +59,7 @@ function App() {
   const [attemptId, setAttemptId] = useState('');
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [examExpiry, setExamExpiry] = useState<string | null>(null);
+  const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [examResult, setExamResult] = useState<any>(null);
   const [showExamScore, setShowExamScore] = useState(false);
   const [examBusy, setExamBusy] = useState(false);
@@ -92,7 +99,7 @@ function App() {
   async function authenticate(e: React.FormEvent) {
     e.preventDefault(); setBusy(true); setMessage('');
     try {
-      const normalized = phone.trim();
+      const normalized = normalizePhone(phone);
       if (!normalized || password.length < 8) throw new Error('شماره همراه و رمز عبور حداقل ۸ کاراکتری را وارد کنید.');
       if (authMode === 'signup') {
         const { data, error } = await supabase.auth.signUp({
@@ -110,7 +117,7 @@ function App() {
     finally { setBusy(false); }
   }
 
-  async function verifySignupOtp(e: React.FormEvent) { e.preventDefault(); setBusy(true); setMessage(''); try { const { error } = await supabase.auth.verifyOtp({ phone: phone.trim(), token: otpCode.trim(), type: 'sms' }); if (error) throw error; setNeedsOtp(false); setMessage('شماره همراه تأیید شد.'); } catch (err) { setMessage(err instanceof Error ? err.message : 'کد تأیید معتبر نیست.'); } finally { setBusy(false); } }
+  async function verifySignupOtp(e: React.FormEvent) { e.preventDefault(); setBusy(true); setMessage(''); try { const { error } = await supabase.auth.verifyOtp({ phone: normalizePhone(phone), token: otpCode.trim(), type: 'sms' }); if (error) throw error; setNeedsOtp(false); setMessage('شماره همراه تأیید شد.'); } catch (err) { setMessage(err instanceof Error ? err.message : 'کد تأیید معتبر نیست.'); } finally { setBusy(false); } }
 
   async function saveProfile(e: React.FormEvent) {
     e.preventDefault(); if (!session?.user) return;
@@ -148,6 +155,7 @@ function App() {
       if (!rows.length) throw new Error('سؤالی برای آزمون دریافت نشد.');
       setAttemptId(rows[0].attempt_id);
       setExamExpiry(rows[0].expires_at);
+      setRemainingSeconds(Math.max(0, Math.floor((Date.parse(rows[0].expires_at) - Date.now()) / 1000)));
       setExam(rows.map((r) => ({ question_id: r.question_id, prompt: r.prompt, options: r.options, display_order: r.display_order })));
       setAnswers({});
       setPage('exam');
@@ -178,6 +186,19 @@ function App() {
     } catch (err) { setMessage(err instanceof Error ? err.message : 'ثبت آزمون ناموفق بود.'); }
     finally { setExamBusy(false); }
   }
+
+  useEffect(() => {
+    if (!examExpiry || exam.length === 0) return;
+    const timer = window.setInterval(() => {
+      const seconds = Math.max(0, Math.floor((Date.parse(examExpiry) - Date.now()) / 1000));
+      setRemainingSeconds(seconds);
+      if (seconds === 0) {
+        window.clearInterval(timer);
+        void submitExam();
+      }
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [examExpiry, exam.length, attemptId]);
 
   async function loadAdminData() {
     if (!isAdmin) return;
@@ -324,7 +345,7 @@ function App() {
           <button onClick={startExam} disabled={examBusy} className="mt-6 rounded-xl bg-teal-700 px-6 py-3 text-sm font-bold text-white disabled:opacity-50">{examBusy?'در حال آماده‌سازی…':'شروع آزمون'}</button>
         </div>}
         {exam.length>0 && <div className="mt-6 space-y-4">
-          <div className="flex items-center justify-between rounded-xl bg-teal-50 p-4 text-sm text-teal-900"><b>{exam.length} سؤال</b><span>پاسخ داده‌شده: {Object.keys(answers).length} از {exam.length}</span></div>
+          <div className="flex items-center justify-between rounded-xl bg-teal-50 p-4 text-sm text-teal-900"><b>{exam.length} سؤال</b><span>زمان باقی‌مانده: {Math.floor(remainingSeconds/60).toString().padStart(2,'0')}:{(remainingSeconds%60).toString().padStart(2,'0')}</span><span>پاسخ: {Object.keys(answers).length}/{exam.length}</span></div>
           {exam.map((q,i)=><article key={q.question_id} className="rounded-2xl border border-slate-200 bg-white p-5"><p className="text-xs font-bold text-teal-700">سؤال {i+1}</p><h3 className="mt-2 font-bold leading-8">{q.prompt}</h3><div className="mt-4 grid gap-2">{q.options.map((option,index)=><label key={index} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-sm ${answers[q.question_id]===index?'border-teal-500 bg-teal-50':'border-slate-200 hover:bg-slate-50'}`}><input type="radio" name={q.question_id} checked={answers[q.question_id]===index} onChange={()=>setAnswers(a=>({...a,[q.question_id]:index}))}/>{option}</label>)}</div></article>)}
           <button onClick={submitExam} disabled={examBusy} className="w-full rounded-xl bg-teal-700 px-6 py-4 font-bold text-white disabled:opacity-50">{examBusy?'در حال ثبت…':'ثبت نهایی پاسخ‌ها'}</button>
         </div>}
