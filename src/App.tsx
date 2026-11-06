@@ -293,7 +293,7 @@ function App() {
           <span><b className="block text-base">سرویس‌یاب</b><small className="text-xs text-slate-500">ره‌آورد الکترونیک</small></span>
         </button>
         <div className="hidden items-center gap-1 md:flex">
-          {nav.map(n => <button key={n.id} onClick={() => setPage(n.id)} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm ${page===n.id?'bg-teal-50 font-bold text-teal-800':'text-slate-600 hover:bg-slate-100'}`}><n.icon size={17}/>{n.label}</button>)}
+          {nav.map(n => <button key={n.id} onClick={() => setPage(n.id as 'home' | 'profile' | 'exam' | 'admin')} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm ${page===n.id?'bg-teal-50 font-bold text-teal-800':'text-slate-600 hover:bg-slate-100'}`}><n.icon size={17}/>{n.label}</button>)}
         </div>
         <div className="flex items-center gap-2">
           <span className="hidden max-w-36 truncate text-xs text-slate-500 sm:block">{profile.full_name || session.user.phone}</span>
