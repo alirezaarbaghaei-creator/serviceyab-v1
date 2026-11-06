@@ -52,6 +52,8 @@ function App() {
   const [attempts, setAttempts] = useState<Attempt[]>([]);
   const [examConfig, setExamConfig] = useState({ is_active: false, duration_minutes: 30, question_count: 20, max_attempts: 1, show_score_to_applicant: false });
   const [bankCount, setBankCount] = useState(0);
+  const [questionRows, setQuestionRows] = useState<any[]>([]);
+  const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
   const [questionDraft, setQuestionDraft] = useState({ prompt: '', options: ['', '', '', ''], correct_option: 0 });
   const [selectedApplicant, setSelectedApplicant] = useState<Profile | null>(null);
   const [filter, setFilter] = useState('');
@@ -198,21 +200,24 @@ function App() {
       }
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [examExpiry, exam.length, attemptId]);
+  }, [examExpiry, exam.length, attemptId, answers]);
 
   async function loadAdminData() {
     if (!isAdmin) return;
-    const [{ data: people, error: peopleError }, { data: results, error: resultsError }, { data: settings }, { count }] = await Promise.all([
+    const [{ data: people, error: peopleError }, { data: results, error: resultsError }, { data: settings }, { count }, { data: questions }, { data: keys }] = await Promise.all([
       supabase.from('applicant_profiles').select('user_id,full_name,phone,city,education_field,education_level,education_center,completed_courses,skills,self_assessed_level,experience,equipment,notes,status,created_at,updated_at').order('created_at', { ascending: false }),
       supabase.rpc('admin_list_exam_attempts'),
       supabase.from('exam_settings').select('*').eq('id', true).maybeSingle(),
-      supabase.from('exam_questions').select('id', { count: 'exact', head: true })
+      supabase.from('exam_questions').select('id', { count: 'exact', head: true }),
+      supabase.from('exam_questions').select('id,prompt,options,is_active,sort_order').order('sort_order'),
+      supabase.from('exam_answer_keys').select('question_id,correct_option')
     ]);
     if (peopleError || resultsError) { setMessage(peopleError?.message || resultsError?.message || 'خطا در دریافت اطلاعات'); return; }
     setApplicants((people || []) as Profile[]);
     setAttempts((results || []) as Attempt[]);
     if (settings) setExamConfig({ is_active: settings.is_active, duration_minutes: settings.duration_minutes, question_count: settings.question_count, max_attempts: settings.max_attempts, show_score_to_applicant: settings.show_score_to_applicant });
     setBankCount(count || 0);
+    setQuestionRows((questions || []).map(q => ({ ...q, correct_option: (keys || []).find(k => k.question_id === q.id)?.correct_option ?? 0 })));
   }
 
   async function saveExamConfig() {
@@ -222,16 +227,25 @@ function App() {
 
   async function createQuestion(e: React.FormEvent) {
     e.preventDefault();
-    const { error } = await supabase.rpc('admin_create_exam_question', {
-      p_prompt: questionDraft.prompt,
-      p_options: questionDraft.options,
-      p_correct_option: questionDraft.correct_option,
-      p_is_active: true
-    });
+    const { error } = editingQuestionId
+      ? await supabase.rpc('admin_update_exam_question', {
+          p_question_id: editingQuestionId,
+          p_prompt: questionDraft.prompt,
+          p_options: questionDraft.options,
+          p_correct_option: questionDraft.correct_option,
+          p_is_active: true
+        })
+      : await supabase.rpc('admin_create_exam_question', {
+          p_prompt: questionDraft.prompt,
+          p_options: questionDraft.options,
+          p_correct_option: questionDraft.correct_option,
+          p_is_active: true
+        });
     if (error) setMessage(error.message);
     else {
       setQuestionDraft({ prompt: '', options: ['', '', '', ''], correct_option: 0 });
-      setMessage('سؤال و کلید پاسخ با موفقیت ثبت شد.');
+      setEditingQuestionId(null);
+      setMessage('سؤال و کلید پاسخ با موفقیت ذخیره شد.');
       await loadAdminData();
     }
   }
@@ -363,9 +377,9 @@ function App() {
               <textarea required minLength={3} value={questionDraft.prompt} onChange={e=>setQuestionDraft(q=>({...q,prompt:e.target.value}))} placeholder="متن سؤال تخصصی…" className={inputClass+' mt-4'} rows={3}/>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">{questionDraft.options.map((option,i)=><input key={i} required value={option} onChange={e=>setQuestionDraft(q=>({...q,options:q.options.map((v,j)=>j===i?e.target.value:v)}))} placeholder={'گزینه '+(i+1)} className={inputClass}/>)}</div>
               <label className="mt-4 block text-xs font-bold">پاسخ صحیح</label><select value={questionDraft.correct_option} onChange={e=>setQuestionDraft(q=>({...q,correct_option:Number(e.target.value)}))} className={inputClass+' mt-2'}>{[0,1,2,3].map(i=><option key={i} value={i}>گزینه {i+1}</option>)}</select>
-              <button disabled={bankCount>=50} className="mt-4 rounded-xl bg-teal-700 px-5 py-3 text-sm font-bold text-white disabled:opacity-40">ثبت سؤال</button>
+              <div className="mt-4 flex gap-2"><button disabled={!editingQuestionId && bankCount>=50} className="rounded-xl bg-teal-700 px-5 py-3 text-sm font-bold text-white disabled:opacity-40">{editingQuestionId?'ذخیره ویرایش':'ثبت سؤال'}</button>{editingQuestionId&&<button type="button" onClick={()=>{setEditingQuestionId(null);setQuestionDraft({prompt:'',options:['','','',''],correct_option:0})}} className="rounded-xl border px-4 py-3 text-sm">انصراف</button>}</div>
             </form>
-            <div className="rounded-2xl border border-slate-200 bg-white p-5"><h3 className="font-black">تنظیمات آزمون</h3>
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-5"><h3 className="font-black">بانک سؤالات ({bankCount}/۵۰)</h3><div className="mt-3 max-h-72 space-y-2 overflow-auto">{questionRows.map((q,i)=><div key={q.id} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 p-3"><div className="min-w-0"><p className="truncate text-sm font-semibold">{i+1}. {q.prompt}</p><p className="mt-1 text-xs text-slate-500">{q.is_active?'فعال':'غیرفعال'}</p></div><button type="button" onClick={()=>{setEditingQuestionId(q.id);setQuestionDraft({prompt:q.prompt,options:q.options,correct_option:q.correct_option})}} className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold">ویرایش</button></div>)}{!questionRows.length&&<p className="text-sm text-slate-500">هنوز سؤالی ثبت نشده است.</p>}</div></div><div className="rounded-2xl border border-slate-200 bg-white p-5"><h3 className="font-black">تنظیمات آزمون</h3>
               <label className="mt-4 flex items-center justify-between text-sm"><span>فعال‌سازی آزمون</span><input type="checkbox" checked={examConfig.is_active} onChange={e=>setExamConfig(s=>({...s,is_active:e.target.checked}))}/></label>
               <label className="mt-4 block text-sm">مدت آزمون (دقیقه)<input type="number" min="1" max="240" value={examConfig.duration_minutes} onChange={e=>setExamConfig(s=>({...s,duration_minutes:Number(e.target.value)}))} className={inputClass+' mt-2'}/></label>
               <label className="mt-4 block text-sm">تعداد سؤال در هر آزمون<input type="number" min="1" max={Math.max(1,bankCount)} value={examConfig.question_count} onChange={e=>setExamConfig(s=>({...s,question_count:Number(e.target.value)}))} className={inputClass+' mt-2'}/></label>
