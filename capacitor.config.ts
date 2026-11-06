@@ -1,8 +1,10 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
+  // appId remains unchanged temporarily; Android package namespace migration
+  // must update Gradle, Java/Kotlin package paths and native metadata together.
   appId: 'com.kateb.app',
-  appName: 'Kateb',
+  appName: 'سرویس‌یاب',
   webDir: 'dist',
   android: {
     allowMixedContent: false,
