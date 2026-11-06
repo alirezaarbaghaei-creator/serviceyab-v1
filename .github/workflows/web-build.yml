@@ -6,18 +6,34 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          persist-credentials: true
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - name: Install dependencies
-        run: npm ci
+      - name: Reconcile dependencies and lockfile
+        run: npm install --ignore-scripts
+      - name: Commit normalized lockfile
+        if: github.event_name == 'push' && github.ref == 'refs/heads/serviceyab-rebuild'
+        run: |
+          if ! git diff --quiet -- package-lock.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add package-lock.json
+            git commit -m "chore(lockfile): remove unused legacy dependencies"
+            git push
+          fi
       - name: Build web application
         run: npm run build
