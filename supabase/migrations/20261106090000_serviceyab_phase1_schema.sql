@@ -130,10 +130,7 @@ create policy "applicant creates own profile" on public.applicant_profiles
 for insert to authenticated with check (user_id = auth.uid() and status = 'new');
 create policy "applicant updates own profile" on public.applicant_profiles
 for update to authenticated using (user_id = auth.uid() or public.is_serviceyab_admin())
-with check (
-  public.is_serviceyab_admin()
-  or (user_id = auth.uid() and status = (select p.status from public.applicant_profiles p where p.user_id = auth.uid()))
-);
+with check (user_id = auth.uid() or public.is_serviceyab_admin());
 create policy "admins manage all applicant profiles" on public.applicant_profiles
 for all to authenticated using (public.is_serviceyab_admin()) with check (public.is_serviceyab_admin());
 
@@ -167,6 +164,27 @@ for all to authenticated using (
   exists (select 1 from public.exam_attempts a where a.id = attempt_id and a.applicant_id = auth.uid() and a.status = 'in_progress' and a.expires_at > now())
 );
 
+-- Only an administrator may change a candidate's review status or private note.
+create or replace function public.admin_set_applicant_review(
+  p_user_id uuid,
+  p_status public.application_status,
+  p_admin_note text default ''
+)
+returns void language plpgsql security definer set search_path = public
+as $
+begin
+  if auth.uid() is null or not public.is_serviceyab_admin() then
+    raise exception 'not_authorized';
+  end if;
+  update public.applicant_profiles
+  set status = p_status, admin_note = coalesce(p_admin_note, '')
+  where user_id = p_user_id;
+  if not found then raise exception 'applicant_not_found'; end if;
+end;
+$;
+revoke all on function public.admin_set_applicant_review(uuid, public.application_status, text) from public;
+grant execute on function public.admin_set_applicant_review(uuid, public.application_status, text) to authenticated;
+
 -- Attempt creation and scoring are server-side. Applicants never receive the answer key.
 create or replace function public.start_serviceyab_exam()
 returns table(attempt_id uuid, expires_at timestamptz, question_id uuid, prompt text, options jsonb, display_order integer)
@@ -180,6 +198,9 @@ begin
   if auth.uid() is null then raise exception 'not_authenticated'; end if;
   select * into settings from public.exam_settings where id = true;
   if not found or not settings.is_active then raise exception 'exam_unavailable'; end if;
+  if not exists (select 1 from public.applicant_profiles p where p.user_id = auth.uid() and length(trim(p.full_name)) > 1 and length(trim(p.city)) > 1) then
+    raise exception 'profile_incomplete';
+  end if;
   if (select count(*) from public.exam_attempts a where a.applicant_id = auth.uid() and a.status = 'submitted') >= settings.max_attempts then
     raise exception 'attempt_limit_reached';
   end if;
@@ -243,7 +264,9 @@ revoke all on function public.submit_serviceyab_exam(uuid) from public;
 grant execute on function public.start_serviceyab_exam() to authenticated;
 grant execute on function public.submit_serviceyab_exam(uuid) to authenticated;
 
-grant select, insert, update on public.applicant_profiles to authenticated;
+grant select, insert on public.applicant_profiles to authenticated;
+revoke update on public.applicant_profiles from authenticated;
+grant update (full_name, phone, city, education_field, education_level, education_center, completed_courses, skills, self_assessed_level, experience, equipment, notes) on public.applicant_profiles to authenticated;
 grant select on public.user_roles to authenticated;
 grant select on public.exam_settings to authenticated;
 grant select on public.exam_questions to authenticated;
