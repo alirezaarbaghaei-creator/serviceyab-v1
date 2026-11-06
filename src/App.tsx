@@ -312,7 +312,7 @@ function App() {
           <button onClick={() => setMenuOpen(v=>!v)} className="rounded-xl border border-slate-200 p-2 md:hidden"><Menu size={18}/></button>
         </div>
       </div>
-      {menuOpen && <div className="grid gap-1 border-t p-3 md:hidden">{nav.map(n=><button key={n.id} onClick={()=>{setPage(n.id);setMenuOpen(false)}} className="flex items-center gap-2 rounded-xl p-3 text-right text-sm hover:bg-slate-50"><n.icon size={17}/>{n.label}</button>)}</div>}
+      {menuOpen && <div className="grid gap-1 border-t p-3 md:hidden">{nav.map(n=><button key={n.id} onClick={()=>{setPage(n.id as 'home' | 'profile' | 'exam' | 'admin');setMenuOpen(false)}} className="flex items-center gap-2 rounded-xl p-3 text-right text-sm hover:bg-slate-50"><n.icon size={17}/>{n.label}</button>)}</div>}
     </header>
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
       {message && <div className="mb-5 flex items-start justify-between gap-3 rounded-xl border border-teal-100 bg-teal-50 px-4 py-3 text-sm text-teal-900"><span>{message}</span><button onClick={()=>setMessage('')}><X size={16}/></button></div>}
