@@ -198,6 +198,7 @@ begin
   if auth.uid() is null then raise exception 'not_authenticated'; end if;
   select * into settings from public.exam_settings where id = true;
   if not found or not settings.is_active then raise exception 'exam_unavailable'; end if;
+  update public.exam_attempts set status = 'expired' where applicant_id = auth.uid() and status = 'in_progress' and expires_at <= now();
   if not exists (select 1 from public.applicant_profiles p where p.user_id = auth.uid() and length(trim(p.full_name)) > 1 and length(trim(p.city)) > 1) then
     raise exception 'profile_incomplete';
   end if;
@@ -241,7 +242,8 @@ begin
   if attempt_row.status <> 'in_progress' then raise exception 'attempt_already_submitted'; end if;
   if attempt_row.expires_at < now() then
     update public.exam_attempts set status = 'expired', submitted_at = submitted where id = p_attempt_id;
-    raise exception 'attempt_expired';
+    return query select null::numeric, null::integer, attempt_row.total_questions, submitted;
+    return;
   end if;
   select count(*) into correct
   from public.exam_attempt_questions aq
@@ -273,4 +275,61 @@ grant select on public.exam_questions to authenticated;
 grant select on public.exam_attempts to authenticated;
 grant select on public.exam_attempt_questions to authenticated;
 grant select, insert, update, delete on public.exam_answers to authenticated;
+grant select, insert, update, delete on public.exam_answer_keys to authenticated;
+
+-- Enforce the contractual maximum bank size at the database boundary.
+create or replace function public.enforce_serviceyab_question_limit()
+returns trigger language plpgsql set search_path = public
+as $$
+begin
+  perform pg_advisory_xact_lock(78234191);
+  if (select count(*) from public.exam_questions) >= 50 then
+    raise exception 'question_bank_limit_reached';
+  end if;
+  return new;
+end;
+$$;
+create trigger exam_questions_max_50 before insert on public.exam_questions
+for each row execute function public.enforce_serviceyab_question_limit();
+
+-- Candidate-facing reads intentionally exclude private administrator notes.
+revoke select on public.applicant_profiles from authenticated;
+grant select (
+  user_id, full_name, phone, city, education_field, education_level,
+  education_center, completed_courses, skills, self_assessed_level,
+  experience, equipment, notes, status, created_at, updated_at
+) on public.applicant_profiles to authenticated;
+
+-- Applicants do not query raw attempt rows: score fields are private unless exposed
+-- through the application policy. Administrators use a guarded RPC instead.
+revoke all on public.exam_attempts from authenticated;
+
+create or replace function public.admin_list_exam_attempts()
+returns table(
+  id uuid,
+  applicant_id uuid,
+  started_at timestamptz,
+  submitted_at timestamptz,
+  score numeric,
+  status text,
+  total_questions integer
+)
+language plpgsql security definer set search_path = public
+as $$
+begin
+  if auth.uid() is null or not public.is_serviceyab_admin() then
+    raise exception 'not_authorized';
+  end if;
+  return query
+    select a.id, a.applicant_id, a.started_at, a.submitted_at, a.score, a.status, a.total_questions
+    from public.exam_attempts a order by a.started_at desc;
+end;
+$$;
+revoke all on function public.admin_list_exam_attempts() from public;
+grant execute on function public.admin_list_exam_attempts() to authenticated;
+
+-- Table privileges are broad only for authenticated users; RLS still confines
+-- all question/settings/answer-key writes to the administrator role.
+grant insert, update, delete on public.exam_settings to authenticated;
+grant insert, update, delete on public.exam_questions to authenticated;
 grant select, insert, update, delete on public.exam_answer_keys to authenticated;
