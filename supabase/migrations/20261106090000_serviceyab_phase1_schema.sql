@@ -357,3 +357,19 @@ end;
 $$;
 revoke all on function public.admin_create_exam_question(text,jsonb,smallint,boolean) from public;
 grant execute on function public.admin_create_exam_question(text,jsonb,smallint,boolean) to authenticated;
+
+create or replace function public.admin_update_exam_question(
+  p_question_id uuid, p_prompt text, p_options jsonb, p_correct_option smallint, p_is_active boolean
+) returns void language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null or not public.is_serviceyab_admin() then raise exception 'not_authorized'; end if;
+  if length(trim(coalesce(p_prompt,''))) < 3 then raise exception 'invalid_question'; end if;
+  if jsonb_typeof(p_options) <> 'array' or jsonb_array_length(p_options) <> 4 then raise exception 'exactly_four_options_required'; end if;
+  if p_correct_option not between 0 and 3 then raise exception 'invalid_correct_option'; end if;
+  update public.exam_questions set prompt = trim(p_prompt), options = p_options, is_active = p_is_active where id = p_question_id;
+  if not found then raise exception 'question_not_found'; end if;
+  insert into public.exam_answer_keys(question_id, correct_option) values (p_question_id, p_correct_option)
+  on conflict (question_id) do update set correct_option = excluded.correct_option;
+end; $$;
+revoke all on function public.admin_update_exam_question(uuid,text,jsonb,smallint,boolean) from public;
+grant execute on function public.admin_update_exam_question(uuid,text,jsonb,smallint,boolean) to authenticated;
