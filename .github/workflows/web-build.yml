@@ -25,6 +25,8 @@ jobs:
           cache: npm
       - name: Reconcile dependencies and lockfile
         run: npm install --ignore-scripts
+      - name: Apply non-breaking security updates
+        run: npm audit fix
       - name: Commit normalized lockfile
         if: github.event_name == 'push' && github.ref == 'refs/heads/serviceyab-rebuild'
         run: |
